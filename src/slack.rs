@@ -1,12 +1,11 @@
 use crate::config;
 extern crate reqwest;
 use reqwest::header::CONTENT_TYPE;
-use reqwest::StatusCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn make_request_on_slack(config: config::Config, json: String) {
 	let client = reqwest::Client::new();
-	let res = client.post(&config.slack_api_url)
+	let _res = client.post(&config.slack_api_url)
 	    .header(CONTENT_TYPE, "application/json")
 	    .body(json)
 	    .send();

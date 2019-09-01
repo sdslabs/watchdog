@@ -12,7 +12,7 @@ fn main(){
 		Ok(val) => val,
 		Err(_e) => String::new(),
 	};
-	let pam_tty = match env::var("PAM_TTY") {
+	let _pam_tty = match env::var("PAM_TTY") {
 		Ok(val) => val,
 		Err(_e) => String::new(),
 	};

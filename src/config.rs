@@ -1,7 +1,7 @@
 use serde_derive::Deserialize;
 use std::fs;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub slack_api_url: String,
     pub keyhouse_hostname: String,
