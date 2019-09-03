@@ -17,7 +17,7 @@ fn main(){
 		Err(_e) => String::new(),
 	};
 
-	if pam_type == "close_session" {
+	if pam_type == "open_session" {
 		let config = watchdog::config::read_config();
 		watchdog::slack::post_sudo_summary(config, pam_ruser);
 	}

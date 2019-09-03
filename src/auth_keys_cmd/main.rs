@@ -12,7 +12,13 @@ fn main(){
 	let ssh_key = format!("{} {}", args[3], args[5]);
 
 	if watchdog::keyhouse::validate_user(config.clone(), ssh_host_username.to_string(), ssh_key.clone()) {
-		println!("{}", watchdog::keyhouse::get_name(config, ssh_key));
+		let name = watchdog::keyhouse::get_name(config.clone(), ssh_key.clone());
+		watchdog::slack::post_ssh_summary(config, true, name, ssh_host_username.to_string());
+		println!("{}", ssh_key);
+	}
+	else {
+		let name = watchdog::keyhouse::get_name(config.clone(), ssh_key);
+		watchdog::slack::post_ssh_summary(config, false, name, ssh_host_username.to_string());
 	}
 
 }

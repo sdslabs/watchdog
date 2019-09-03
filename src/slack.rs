@@ -36,3 +36,18 @@ pub fn post_sudo_summary(config: config::Config, pam_ruser: String) {
 	let json = slack_json(text, color);
 	make_request_on_slack(config, json);
 }
+
+pub fn post_ssh_summary(config: config::Config, success: bool, user: String, pam_ruser: String) {
+	if success {
+		let text = format!("{} logged in on {}@{}", user, pam_ruser, config.keyhouse_hostname);
+		let color = String::from("#36a64f");
+		let json = slack_json(text, color);
+		make_request_on_slack(config, json);
+	}
+	else {
+		let text = format!("{} tried to log in on {}@{}", user, pam_ruser, config.keyhouse_hostname);
+		let color = String::from("#f29513");
+		let json = slack_json(text, color);
+		make_request_on_slack(config, json);
+	}
+}
