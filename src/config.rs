@@ -12,8 +12,8 @@ pub struct Config {
 }
 
 pub fn read_config() -> Config {
-	let toml_str = fs::read_to_string("/home/kanav/projects/watchdog-rs/config.toml")
-						.expect("Error reading the config.toml file.");
-	let config: Config = toml::from_str(&toml_str).unwrap();
-	return config;  
+    let toml_str = fs::read_to_string("/home/kanav/projects/watchdog-rs/config.toml")
+        .expect("Error reading the config.toml file.");
+    let config: Config = toml::from_str(&toml_str).unwrap();
+    return config;
 }
