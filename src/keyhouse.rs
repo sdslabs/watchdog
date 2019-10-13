@@ -13,7 +13,7 @@ pub fn validate_user(config: &config::Config, user: String, ssh_key: &String) ->
     let client = reqwest::Client::new();
     let res = client
         .get(&format!(
-            "{}/access/{}/{}/{}?ref=build&&access_token={}",
+            "{}/access/{}/{}/{}?ref=build&access_token={}",
             config.keyhouse_base_url, config.keyhouse_hostname, user, hex, config.keyhouse_token
         ))
         .send();

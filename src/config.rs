@@ -9,6 +9,7 @@ pub struct Config {
     pub keyhouse_base_url: String,
     pub temp_env_file: String,
     pub watchdog_base_url: String,
+    pub error_log_file: String,
 }
 
 pub fn read_config() -> Config {

@@ -1,11 +1,14 @@
+extern crate log;
+extern crate watchdog;
+
+use log::error;
 use std::env;
 use std::fs;
-// use std::io::prelude::*;
-
-extern crate watchdog;
 
 fn main() {
     let config = watchdog::config::read_config();
+    watchdog::init::init(&config);
+
     let args: Vec<_> = env::args().collect();
 
     let ssh_host_username = &args[1];
@@ -17,7 +20,14 @@ fn main() {
             ssh_host_username, ssh_key
         );
 
-        fs::write(&config.temp_env_file, data).expect("unable to write temp env file");
+        let res = fs::write(&config.temp_env_file, data);
+        match res {
+            Ok(b) => b,
+            Err(_) => {
+                error!("Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user");
+                std::process::exit(1);
+            }
+        }
 
         println!("{}", ssh_key);
     } else {
