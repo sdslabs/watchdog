@@ -1,15 +1,21 @@
 use crate::config;
 extern crate reqwest;
+use log::info;
 use reqwest::header::CONTENT_TYPE;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn make_request_on_slack(config: &config::Config, json: String) {
     let client = reqwest::Client::new();
-    let _res = client
+    let res = client
         .post(&config.slack_api_url)
         .header(CONTENT_TYPE, "application/json")
         .body(json)
         .send();
+
+    match res {
+        Ok(_) => {}
+        Err(_) => info!("Couldn't make request on slack. Activity couldn't be logged on slack."),
+    }
 }
 
 fn slack_json(text: String, color: String) -> String {
@@ -19,17 +25,17 @@ fn slack_json(text: String, color: String) -> String {
         .expect("Time went backwards");
     let json = format!(
         "
-	{{
-		\"attachments\": [
-			{{
-				\"text\": \"{}\",
-				\"mrkdwn_in\": [\"text\"],
-				\"ts\": \"{}\",
-				\"color\": \"{}\"
-			}}
-		]
-	}}
-	",
+    {{
+        \"attachments\": [
+            {{
+                \"text\": \"{}\",
+                \"mrkdwn_in\": [\"text\"],
+                \"ts\": \"{}\",
+                \"color\": \"{}\"
+            }}
+        ]
+    }}
+    ",
         text,
         since_the_epoch.as_secs(),
         color
