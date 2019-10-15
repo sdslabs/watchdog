@@ -20,6 +20,10 @@ name = "pam_sudo"
 path = "src/sudo/main.rs"
 
 [[bin]]
+name = "pam_su"
+path = "src/su/main.rs"
+
+[[bin]]
 name = "pam_ssh"
 path = "src/ssh/main.rs"
 

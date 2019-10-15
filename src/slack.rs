@@ -53,6 +53,16 @@ pub fn post_sudo_summary(config: &config::Config, pam_ruser: String) {
     make_request_on_slack(config, json);
 }
 
+pub fn post_su_summary(config: &config::Config, from: String, to: String) {
+    let text = format!(
+        "switched user from {} to {} on {}",
+        from, to, config.keyhouse_hostname
+    );
+    let color = String::from("#36a64f");
+    let json = slack_json(text, color);
+    make_request_on_slack(config, json);
+}
+
 pub fn post_ssh_summary(config: &config::Config, success: bool, user: String, pam_ruser: String) {
     if success {
         let text = format!(
