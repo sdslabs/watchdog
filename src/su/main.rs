@@ -11,7 +11,7 @@ fn main() {
         Ok(val) => val,
         Err(_e) => String::new(),
     };
-    let _pam_tty = match env::var("PAM_TTY") {
+    let pam_user = match env::var("PAM_USER") {
         Ok(val) => val,
         Err(_e) => String::new(),
     };
@@ -20,6 +20,6 @@ fn main() {
         let config = watchdog::config::read_config();
         watchdog::init::init(&config);
 
-        watchdog::slack::post_sudo_summary(&config, pam_ruser);
+        watchdog::slack::post_su_summary(&config, pam_ruser, pam_user);
     }
 }
