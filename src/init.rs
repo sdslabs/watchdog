@@ -11,6 +11,7 @@ pub fn init(config: &config::Config) {
 
 pub fn init_logger(config: &config::Config) {
     let log_file = match OpenOptions::new()
+        .create_new(true)
         .read(true)
         .append(true)
         .open(&config.error_log_file)
