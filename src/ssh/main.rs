@@ -16,6 +16,6 @@ fn main() {
         let name = watchdog::keyhouse::get_name(&config, env.ssh_key);
 
         watchdog::slack::post_ssh_summary(&config, true, name, env.ssh_host_username);
-        watchdog::environment::clear_temp_env(&config.temp_env_file);
+        watchdog::utils::clear_file(&config.temp_env_file);
     }
 }
