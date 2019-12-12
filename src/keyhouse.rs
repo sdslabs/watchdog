@@ -60,6 +60,6 @@ pub fn get_name(config: &config::Config, ssh_key: String) -> String {
         Err(_) => {
             error!("Error while making a request to keyhouse");
             return String::new();
-;        }
+        }
     }
 }

@@ -4,6 +4,7 @@ extern crate watchdog;
 use log::error;
 use std::env;
 use std::fs;
+use watchdog::notifier::{Notifier, Slack};
 
 fn main() {
     let config = watchdog::config::read_config();
@@ -32,6 +33,12 @@ fn main() {
         println!("{}", ssh_key);
     } else {
         let name = watchdog::keyhouse::get_name(&config, ssh_key);
-        watchdog::slack::post_ssh_summary(&config, false, name, ssh_host_username.to_string());
+
+        match Slack::new(&config) {
+            Some(notifier) => {
+                notifier.post_ssh_summary(&config, false, name, ssh_host_username.to_string())
+            }
+            None => {}
+        };
     }
 }

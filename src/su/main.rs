@@ -1,6 +1,7 @@
-use std::env;
-
 extern crate watchdog;
+
+use std::env;
+use watchdog::notifier::{Notifier, Slack};
 
 fn main() {
     let pam_type = match env::var("PAM_TYPE") {
@@ -20,6 +21,9 @@ fn main() {
         let config = watchdog::config::read_config();
         watchdog::init::init(&config);
 
-        watchdog::slack::post_su_summary(&config, pam_ruser, pam_user);
+        match Slack::new(&config) {
+            Some(notifier) => notifier.post_su_summary(&config, pam_ruser, pam_user),
+            None => {}
+        };
     }
 }

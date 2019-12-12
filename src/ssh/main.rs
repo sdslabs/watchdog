@@ -1,6 +1,7 @@
 extern crate watchdog;
 
 use std::env;
+use watchdog::notifier::{Notifier, Slack};
 
 fn main() {
     let pam_type = match env::var("PAM_TYPE") {
@@ -15,7 +16,11 @@ fn main() {
         let env = watchdog::environment::read_temp_env(&config.temp_env_file);
         let name = watchdog::keyhouse::get_name(&config, env.ssh_key);
 
-        watchdog::slack::post_ssh_summary(&config, true, name, env.ssh_host_username);
+        match Slack::new(&config) {
+            Some(notifier) => notifier.post_ssh_summary(&config, true, name, env.ssh_host_username),
+            None => {}
+        };
+
         watchdog::utils::clear_file(&config.temp_env_file);
     }
 }
