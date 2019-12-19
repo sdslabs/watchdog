@@ -1,21 +1,23 @@
 extern crate log;
-extern crate watchdog;
 
 use log::error;
 use std::env;
 use std::fs;
-use watchdog::notifier::{Notifier, Slack};
+use common_lib::notifier::{Notifier, Slack};
+use common_lib::init::init;
+use common_lib::config::read_config;
+use common_lib::keyhouse::{validate_user, get_name};
 
-fn main() {
-    let config = watchdog::config::read_config();
-    watchdog::init::init(&config);
+pub fn handle_auth() {
+    let config = read_config();
+    init(&config);
 
     let args: Vec<_> = env::args().collect();
 
     let ssh_host_username = &args[1];
     let ssh_key = format!("{} {}", args[3], args[5]);
 
-    if watchdog::keyhouse::validate_user(&config, ssh_host_username.to_string(), &ssh_key) {
+    if validate_user(&config, ssh_host_username.to_string(), &ssh_key) {
         let data = format!(
             "ssh_host_username = '{}'\nssh_key = '{}'\n",
             ssh_host_username, ssh_key
@@ -32,7 +34,7 @@ fn main() {
 
         println!("{}", ssh_key);
     } else {
-        let name = watchdog::keyhouse::get_name(&config, ssh_key);
+        let name = get_name(&config, ssh_key);
 
         match Slack::new(&config) {
             Some(notifier) => {
@@ -41,4 +43,9 @@ fn main() {
             None => {}
         };
     }
+}
+
+pub fn handle_auth_logs() {
+    println!("watchdog-auth logs:");
+    /* TODO: Filter logs specific to auth */
 }
