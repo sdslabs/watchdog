@@ -1,14 +1,15 @@
 extern crate base64;
 extern crate crypto;
 extern crate reqwest;
+extern crate serde_json;
 
-use crate::config;
+use crate::config::Config;
+use crate::errors::*;
+
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use log::error;
-use serde_json;
 
-pub fn validate_user(config: &config::Config, user: String, ssh_key: &String) -> bool {
+pub fn validate_user(config: &Config, user: String, ssh_key: &String) -> Result<bool> {
     let mut hasher = Sha256::new();
 
     hasher.input_str(&ssh_key);
@@ -22,19 +23,29 @@ pub fn validate_user(config: &config::Config, user: String, ssh_key: &String) ->
     match res {
         Ok(r) => {
             if r.status().is_success() {
-                return true;
+                return Ok(true);
             } else {
-                return false;
+                return Ok(false);
             }
         }
-        Err(_) => {
-            error!("Error making request to keyhouse.");
-            return false;
-        }
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}",e)))
     }
 }
 
-pub fn get_name(config: &config::Config, ssh_key: String) -> String {
+fn get_content_from_github_json(json_text: &str) -> Result<String> {
+    let json: serde_json::Value = serde_json::from_str(json_text)
+                                    .chain_err(|| "Invalid JSON recieved from GitHub. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
+    let encoded_content = json["content"].as_str()
+                            .ok_or(Error::from(""))
+                            .chain_err(|| "No key 'content' found in JSON recieved from GitHub.")?;
+    let len = str::len(encoded_content);
+    let content = base64::decode(&encoded_content[..len-2])
+                    .chain_err(|| "Bad Base64 Encoding. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
+    Ok(String::from_utf8(content).chain_err(|| "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable.")?)
+
+}
+
+pub fn get_name(config: &Config, ssh_key: String) -> Result<String> {
     let mut hasher = Sha256::new();
 
     hasher.input_str(&ssh_key);
@@ -48,18 +59,12 @@ pub fn get_name(config: &config::Config, ssh_key: String) -> String {
     match res {
         Ok(mut r) => {
             if r.status().is_success() {
-                let json_text = r.text().unwrap();
-                let json: serde_json::Value = serde_json::from_str(&json_text).unwrap();
-                let name = json["content"].as_str().unwrap();
-                let len = String::len(&String::from(name));
-                return String::from_utf8(base64::decode(&name[..len - 2]).unwrap()).unwrap();
+                let json_text = r.text()?;
+                return get_content_from_github_json(&json_text);
             } else {
-                return String::new();
+                return Ok(String::from("UNKNOWN"));
             }
         }
-        Err(_) => {
-            error!("Error while making a request to keyhouse");
-            return String::new();
-        }
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}",e)))
     }
 }

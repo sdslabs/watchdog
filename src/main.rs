@@ -9,6 +9,7 @@ use crate::sudo::{handle_sudo, handle_sudo_logs};
 use crate::su::{handle_su, handle_su_logs};
 use crate::ssh::{handle_ssh, handle_ssh_logs};
 use crate::auth::{handle_auth, handle_auth_logs};
+use common_lib::errors::Error;
 
 use clap::{Arg, App,SubCommand};
 
@@ -49,6 +50,16 @@ fn make_app<'a,'b>() -> App<'a,'b> {
             .about("Get or set Watchdog configuration"))
 }
 
+fn print_traceback(e: Error) {
+    println!("Traceback:");
+
+    let mut i = 1;
+    for e in e.iter().skip(1) {
+        println!("[{}]: {}",i, e);
+        i += 1;
+    }
+}
+
 fn main() {
     let app = make_app();
     let matches = app.get_matches();
@@ -57,28 +68,44 @@ fn main() {
         if matches.is_present("logs") {
             handle_sudo_logs();
         } else {
-            handle_sudo();
+            if let Err(e) = handle_sudo() {
+                println!("watchdog-sudo error: {}", e);
+                print_traceback(e);
+                std::process::exit(1);
+            }
         }
     }
     else if let Some(ref matches) = matches.subcommand_matches("su") {
         if matches.is_present("logs") {
             handle_su_logs();
         } else {
-            handle_su();
+            if let Err(e) = handle_su() {
+                println!("watchdog-su error: {}", e);
+                print_traceback(e);
+                std::process::exit(1);
+            }
         }
     }
     else if let Some(ref matches) = matches.subcommand_matches("ssh") {
         if matches.is_present("logs") {
             handle_ssh_logs();
         } else {
-            handle_ssh();
+            if let Err(e) = handle_ssh() {
+                println!("watchdog-ssh error: {}", e);
+                print_traceback(e);
+                std::process::exit(1);
+            }
         }
     }
     else if let Some(ref matches) = matches.subcommand_matches("auth") {
         if matches.is_present("logs") {
             handle_auth_logs();
         } else {
-            handle_auth();
+            if let Err(e) = handle_auth() {
+                println!("watchdog-auth error: {}", e);
+                print_traceback(e);
+                std::process::exit(1); 
+            }
         }
     }
     else {

@@ -15,6 +15,7 @@ rust-crypto = "0.2.36"
 simplelog = "^0.7.3"
 log = "^0.4.8"
 clap = "2.19"
+error-chain="0.12.1"
 
 [[ bin ]]
 name = "watchdog"

@@ -2,7 +2,7 @@ extern crate log;
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::config;
+use crate::config::Config;
 use log::info;
 use reqwest::header::CONTENT_TYPE;
 use serde_json::json;
@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// like Slack, Discord etc.
 pub trait Notifier<'a> {
     /// Returns corresponding `Notifier` from watchdog config
-    fn new(conf: &'a config::Config) -> Option<Self>
+    fn new(conf: &'a Config) -> Option<Self>
     where
         Self: Sized;
     /// URL returns the webhook url of the Notifier
@@ -22,13 +22,13 @@ pub trait Notifier<'a> {
     /// Send request with message
     fn make_request(&self, json: String);
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &config::Config, pam_ruser: String);
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String);
     /// Post summary for su attempts
-    fn post_su_summary(&self, conf: &config::Config, from: String, to: String);
+    fn post_su_summary(&self, conf: &Config, from: String, to: String);
     /// Post summary for ssh attempts
     fn post_ssh_summary(
         &self,
-        conf: &config::Config,
+        conf: &Config,
         success: bool,
         user: String,
         pam_ruser: String,
@@ -67,7 +67,7 @@ impl Slack<'_> {
 }
 
 impl<'a> Notifier<'a> for Slack<'a> {
-    fn new(conf: &'a config::Config) -> Option<Slack> {
+    fn new(conf: &'a Config) -> Option<Slack> {
         let url: &'a str = conf.slack_api_url.trim();
         if url.len() == 0 {
             return None;
@@ -95,13 +95,13 @@ impl<'a> Notifier<'a> for Slack<'a> {
         }
     }
 
-    fn post_sudo_summary(&self, conf: &config::Config, pam_ruser: String) {
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) {
         let text = format!("sudo attempted on {}@{}", pam_ruser, conf.keyhouse_hostname);
         let json = Slack::create_json(&text, "#36a64f");
         self.make_request(json);
     }
 
-    fn post_su_summary(&self, conf: &config::Config, from: String, to: String) {
+    fn post_su_summary(&self, conf: &Config, from: String, to: String) {
         let text = format!(
             "switched user from {} to {} on {}",
             from, to, conf.keyhouse_hostname
@@ -112,7 +112,7 @@ impl<'a> Notifier<'a> for Slack<'a> {
 
     fn post_ssh_summary(
         &self,
-        conf: &config::Config,
+        conf: &Config,
         success: bool,
         user: String,
         pam_ruser: String,
