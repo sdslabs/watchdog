@@ -20,7 +20,7 @@ pub fn handle_su() -> Result<()> {
         init(&config)?;
 
         match Slack::new(&config) {
-            Some(notifier) => notifier.post_su_summary(&config, pam_ruser, pam_user),
+            Some(notifier) => notifier.post_su_summary(&config, pam_ruser, pam_user)?,
             None => {}
         };
     }

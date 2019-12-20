@@ -16,7 +16,7 @@ pub fn handle_sudo() -> Result<()>{
         init(&config)?;
 
         match Slack::new(&config) {
-            Some(notifier) => notifier.post_sudo_summary(&config, pam_ruser),
+            Some(notifier) => notifier.post_sudo_summary(&config, pam_ruser)?,
             None => {}
         };
     }

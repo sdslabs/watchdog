@@ -1,9 +1,8 @@
-extern crate log;
 extern crate reqwest;
 extern crate serde_json;
 
 use crate::config::Config;
-use log::info;
+use crate::errors::*;
 use reqwest::header::CONTENT_TYPE;
 use serde_json::json;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,11 +19,11 @@ pub trait Notifier<'a> {
     /// URL returns the webhook url of the Notifier
     fn url(&self) -> &str;
     /// Send request with message
-    fn make_request(&self, json: String);
+    fn make_request(&self, json: String) -> Result<()>;
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String);
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()>;
     /// Post summary for su attempts
-    fn post_su_summary(&self, conf: &Config, from: String, to: String);
+    fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()>;
     /// Post summary for ssh attempts
     fn post_ssh_summary(
         &self,
@@ -32,7 +31,7 @@ pub trait Notifier<'a> {
         success: bool,
         user: String,
         pam_ruser: String,
-    );
+    ) -> Result<()>;
 }
 
 /// Implements `Notifier` trait for slack
@@ -47,12 +46,11 @@ impl Slack<'_> {
     ///   It accepts markdown format string.
     /// * `color` is a hexcode color string prefixed with `#`.
     ///   It's the color of message accent on Slack.
-    fn create_json(text: &str, color: &str) -> String {
+    fn create_json(text: &str, color: &str) -> Result<String> {
         let start = SystemTime::now();
         let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
-        json!({
+            .duration_since(UNIX_EPOCH)?;
+        let json_text = json!({
             "attachments": [
                 {
                     "text": format!("{}", text),
@@ -61,8 +59,8 @@ impl Slack<'_> {
                     "color": format!("{}", color)
                 }
             ]
-        })
-        .to_string()
+        }).to_string();
+        Ok(json_text)
     }
 }
 
@@ -79,7 +77,7 @@ impl<'a> Notifier<'a> for Slack<'a> {
         self.0
     }
 
-    fn make_request(&self, json: String) {
+    fn make_request(&self, json: String) -> Result<()> {
         let client = reqwest::Client::new();
         let res = client
             .post(self.url())
@@ -87,27 +85,25 @@ impl<'a> Notifier<'a> for Slack<'a> {
             .body(json)
             .send();
 
-        match res {
-            Ok(_) => {}
-            Err(_) => {
-                info!("Couldn't make request on slack. Activity couldn't be logged on slack.")
-            }
-        }
+        res.chain_err(|| "Error while creating a request to Slack Webhook")?;
+        Ok(())
     }
 
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) {
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
         let text = format!("sudo attempted on {}@{}", pam_ruser, conf.keyhouse_hostname);
-        let json = Slack::create_json(&text, "#36a64f");
-        self.make_request(json);
+        let json = Slack::create_json(&text, "#36a64f")?;
+        self.make_request(json).chain_err(|| "Couldn't post sudo summary to Slack")?;
+        Ok(())
     }
 
-    fn post_su_summary(&self, conf: &Config, from: String, to: String) {
+    fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()> {
         let text = format!(
             "switched user from {} to {} on {}",
             from, to, conf.keyhouse_hostname
         );
-        let json = Slack::create_json(&text, "#36a64f");
-        self.make_request(json);
+        let json = Slack::create_json(&text, "#36a64f")?;
+        self.make_request(json).chain_err(|| "Couldn't post su summary to Slack")?;
+        Ok(())
     }
 
     fn post_ssh_summary(
@@ -116,7 +112,7 @@ impl<'a> Notifier<'a> for Slack<'a> {
         success: bool,
         user: String,
         pam_ruser: String,
-    ) {
+    ) -> Result<()> {
         let color: &str;
         let text: String;
         if success {
@@ -132,7 +128,8 @@ impl<'a> Notifier<'a> for Slack<'a> {
             );
             color = "#f29513";
         }
-        let json = Slack::create_json(&text, color);
-        self.make_request(json);
+        let json = Slack::create_json(&text, color)?;
+        self.make_request(json).chain_err(|| "Couldn't post ssh summary to Slack")?;
+        Ok(())
     }
 }

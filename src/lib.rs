@@ -17,6 +17,7 @@ pub mod errors {
     		UTF8Error(::std::string::FromUtf8Error);
     		Reqwest(::reqwest::Error);
     		Toml(::toml::de::Error);
+    		Time(::std::time::SystemTimeError);
     	}
     }
 }
