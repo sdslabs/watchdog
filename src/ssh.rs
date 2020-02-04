@@ -16,7 +16,7 @@ pub fn handle_ssh() -> Result<()> {
         init(&config)?;
 
         let env = read_temp_env(&config.temp_env_file)?;
-        let name = get_name(&config, env.ssh_key)?;
+        let name = get_name(&config, &env.ssh_key)?;
 
         match Slack::new(&config) {
             Some(notifier) => notifier.post_ssh_summary(&config, true, name, env.ssh_host_username)?,

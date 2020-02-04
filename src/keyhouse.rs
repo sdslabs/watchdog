@@ -9,22 +9,27 @@ use crate::errors::*;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 
-pub fn validate_user(config: &Config, user: String, ssh_key: &String) -> Result<bool> {
+pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let mut hasher = Sha256::new();
 
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
 
-    let res = reqwest::get(&format!(
-        "{}/access/{}/{}/{}?ref=build&access_token={}",
-        config.keyhouse_base_url, config.keyhouse_hostname, user, hex, config.keyhouse_token
-    ));
+    let client = reqwest::Client::new();
+    let res = client
+      .get(&format!(
+        "{}/access/{}/{}/{}?ref=build",
+        config.keyhouse_base_url, config.keyhouse_hostname, user, hex
+        ))
+      .header("Authorization", &format!("Bearer {}", config.keyhouse_token))
+      .send();
 
     match res {
         Ok(r) => {
             if r.status().is_success() {
                 return Ok(true);
             } else {
+                println!("Hoho");
                 return Ok(false);
             }
         }
@@ -45,7 +50,7 @@ fn get_content_from_github_json(json_text: &str) -> Result<String> {
 
 }
 
-pub fn get_name(config: &Config, ssh_key: String) -> Result<String> {
+pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     let mut hasher = Sha256::new();
 
     hasher.input_str(&ssh_key);

@@ -45,7 +45,25 @@ fn make_app<'a,'b>() -> App<'a,'b> {
             .arg(Arg::with_name("logs")
                 .short("l")
                 .long("logs")
-                .help("Get the logs for authorized keys command.")))
+                .help("Get the logs for authorized keys command."))
+            .arg(Arg::with_name("pubkey")
+                .short("p")
+                .long("pubkey")
+                .help("Public key of the user trying to Authorize")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::with_name("keytype")
+                .short("t")
+                .long("type")
+                .help("Type of Public Key/ Algorithm used")
+                .takes_value(true)
+                .required(true))
+            .arg(Arg::with_name("user")
+                .short("u")
+                .long("user")
+                .help("Linux username requested access to. `user` in `ssh user@host`")
+                .takes_value(true)
+                .required(true)))
         .subcommand(SubCommand::with_name("config")
             .about("Get or set Watchdog configuration"))
 }
@@ -101,7 +119,11 @@ fn main() {
         if matches.is_present("logs") {
             handle_auth_logs();
         } else {
-            if let Err(e) = handle_auth() {
+            let pubkey = matches.value_of("pubkey").unwrap();
+            let keytype = matches.value_of("keytype").unwrap();
+            let user = matches.value_of("user").unwrap();
+            let ssh_key = format!("{} {}", keytype, pubkey);
+            if let Err(e) = handle_auth(&user, &ssh_key) {
                 println!("watchdog-auth error: {}", e);
                 print_traceback(e);
                 std::process::exit(1); 

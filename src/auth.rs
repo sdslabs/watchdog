@@ -1,4 +1,3 @@
-use std::env;
 use std::fs;
 use common_lib::notifier::{Notifier, Slack};
 use common_lib::init::init;
@@ -6,18 +5,11 @@ use common_lib::config::read_config;
 use common_lib::keyhouse::{validate_user, get_name};
 use common_lib::errors::*;
 
-pub fn handle_auth() -> Result<()> {
+pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
     init(&config)?;
 
-    // TODO: we now use Clap to collect arguments, this wont work now
-    let args: Vec<_> = env::args().collect();
-
-    let ssh_host_username = &args[1];
-    let ssh_key = format!("{} {}", args[3], args[5]);
-    /// ... till here
-
-    match validate_user(&config, ssh_host_username.to_string(), &ssh_key) {
+    match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
             let data = format!(
                 "ssh_host_username = '{}'\nssh_key = '{}'\n",
