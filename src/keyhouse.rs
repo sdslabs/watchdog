@@ -29,7 +29,6 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
             if r.status().is_success() {
                 return Ok(true);
             } else {
-                println!("Hoho");
                 return Ok(false);
             }
         }
