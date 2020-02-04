@@ -2,7 +2,7 @@
 watchdog_config = """
 # SDSLabs Watchdog configuration START
 
-session optional pam_exec.so seteuid /opt/watchdog/bin/pam_su
+session optional pam_exec.so seteuid /opt/watchdog/bin/watchdog su
 
 # SDSLabs Watchdog configuration END
 """

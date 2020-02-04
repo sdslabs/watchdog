@@ -4,7 +4,7 @@ watchdog_config = """
 
 UsePAM yes
 PasswordAuthentication no
-AuthorizedKeysCommand /opt/watchdog/bin/auth_keys_cmd %u %h %t %f %k
+AuthorizedKeysCommand /opt/watchdog/bin/watchdog auth -u %u -t %t -p %k
 AuthorizedKeysCommandUser root
 
 # SDSLabs Watchdog configuration END
