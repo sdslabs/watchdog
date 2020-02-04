@@ -2,6 +2,7 @@
 
 # Install all the files at right place
 mkdir -p /opt/watchdog/bin
+mkdir -p /opt/watchdog/logs
 
 cp ../target/debug/watchdog /opt/watchdog/bin/watchdog
 chown root /opt/watchdog/bin/watchdog
