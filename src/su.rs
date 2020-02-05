@@ -3,6 +3,7 @@ use common_lib::notifier::{Notifier, Slack};
 use common_lib::config::read_config;
 use common_lib::init::init;
 use common_lib::errors::*;
+use std::process::Command;
 
 pub fn handle_su() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -28,6 +29,6 @@ pub fn handle_su() -> Result<()> {
 }
 
 pub fn handle_su_logs() {
-    println!("watchdog-su logs:");
-    /* TODO: Filter logs specific to su */
+    Command::new("less").arg("/opt/watchdog/logs/su.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
+
 }

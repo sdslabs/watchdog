@@ -4,6 +4,7 @@ use common_lib::init::init;
 use common_lib::config::read_config;
 use common_lib::keyhouse::{validate_user, get_name};
 use common_lib::errors::*;
+use std::process::Command;
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
@@ -42,6 +43,5 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
 }
 
 pub fn handle_auth_logs() {
-    println!("watchdog-auth logs:");
-    /* TODO: Filter logs specific to auth */
+    Command::new("less").arg("/opt/watchdog/logs/ssh.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
 }

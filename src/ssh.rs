@@ -6,6 +6,7 @@ use common_lib::environment::read_temp_env;
 use common_lib::keyhouse::get_name;
 use common_lib::utils::clear_file;
 use common_lib::errors::*;
+use std::process::Command;
 
 pub fn handle_ssh() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -29,6 +30,5 @@ pub fn handle_ssh() -> Result<()> {
 }
 
 pub fn handle_ssh_logs() {
-    println!("watchdog-ssh logs:");
-    /* TODO: Filter logs specific to ssh */
+    Command::new("less").arg("/opt/watchdog/logs/ssh.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
 }
