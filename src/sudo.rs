@@ -1,11 +1,11 @@
-use std::env;
-use common_lib::notifier::{Notifier, Slack};
 use common_lib::config::read_config;
-use common_lib::init::init;
 use common_lib::errors::*;
+use common_lib::init::init;
+use common_lib::notifier::{Notifier, Slack};
+use std::env;
 use std::process::Command;
 
-pub fn handle_sudo() -> Result<()>{
+pub fn handle_sudo() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
                      .chain_err(|| "PAM_TYPE not set. If you are running this by `watchdog sudo`, please don't. It's an internal command, intended to be used by PAM.")?;
 
@@ -26,5 +26,8 @@ pub fn handle_sudo() -> Result<()>{
 }
 
 pub fn handle_sudo_logs() {
-    Command::new("less").arg("/opt/watchdog/logs/sudo.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
+    Command::new("less")
+        .arg("/opt/watchdog/logs/sudo.logs")
+        .status()
+        .expect("Something went wrong. Is `less` command present in your environment?");
 }

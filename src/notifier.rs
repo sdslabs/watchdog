@@ -48,8 +48,7 @@ impl Slack<'_> {
     ///   It's the color of message accent on Slack.
     fn create_json(text: &str, color: &str) -> Result<String> {
         let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)?;
+        let since_the_epoch = start.duration_since(UNIX_EPOCH)?;
         let json_text = json!({
             "attachments": [
                 {
@@ -59,7 +58,8 @@ impl Slack<'_> {
                     "color": format!("{}", color)
                 }
             ]
-        }).to_string();
+        })
+        .to_string();
         Ok(json_text)
     }
 }
@@ -92,7 +92,8 @@ impl<'a> Notifier<'a> for Slack<'a> {
     fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
         let text = format!("sudo attempted on {}@{}", pam_ruser, conf.keyhouse_hostname);
         let json = Slack::create_json(&text, "#36a64f")?;
-        self.make_request(json).chain_err(|| "Couldn't post sudo summary to Slack")?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post sudo summary to Slack")?;
         Ok(())
     }
 
@@ -102,7 +103,8 @@ impl<'a> Notifier<'a> for Slack<'a> {
             from, to, conf.keyhouse_hostname
         );
         let json = Slack::create_json(&text, "#36a64f")?;
-        self.make_request(json).chain_err(|| "Couldn't post su summary to Slack")?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post su summary to Slack")?;
         Ok(())
     }
 
@@ -129,7 +131,8 @@ impl<'a> Notifier<'a> for Slack<'a> {
             color = "#f29513";
         }
         let json = Slack::create_json(&text, color)?;
-        self.make_request(json).chain_err(|| "Couldn't post ssh summary to Slack")?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post ssh summary to Slack")?;
         Ok(())
     }
 }

@@ -1,19 +1,19 @@
 extern crate clap;
 
-mod sudo;
-mod su;
-mod ssh;
 mod auth;
+mod ssh;
+mod su;
+mod sudo;
 
-use crate::sudo::{handle_sudo, handle_sudo_logs};
-use crate::su::{handle_su, handle_su_logs};
-use crate::ssh::{handle_ssh, handle_ssh_logs};
 use crate::auth::{handle_auth, handle_auth_logs};
+use crate::ssh::{handle_ssh, handle_ssh_logs};
+use crate::su::{handle_su, handle_su_logs};
+use crate::sudo::{handle_sudo, handle_sudo_logs};
 use common_lib::errors::Error;
 
-use clap::{Arg, App,SubCommand};
+use clap::{App, Arg, SubCommand};
 
-fn make_app<'a,'b>() -> App<'a,'b> {
+fn make_app<'a, 'b>() -> App<'a, 'b> {
     App::new("Watchdog")
         .version("0.1.0")
         .author("SDSLabs <contact@sdslabs.co>")
@@ -73,7 +73,7 @@ fn print_traceback(e: Error) {
 
     let mut i = 1;
     for e in e.iter().skip(1) {
-        println!("[{}]: {}",i, e);
+        println!("[{}]: {}", i, e);
         i += 1;
     }
 }
@@ -92,8 +92,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    }
-    else if let Some(ref matches) = matches.subcommand_matches("su") {
+    } else if let Some(ref matches) = matches.subcommand_matches("su") {
         if matches.is_present("logs") {
             handle_su_logs();
         } else {
@@ -103,8 +102,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    }
-    else if let Some(ref matches) = matches.subcommand_matches("ssh") {
+    } else if let Some(ref matches) = matches.subcommand_matches("ssh") {
         if matches.is_present("logs") {
             handle_ssh_logs();
         } else {
@@ -114,8 +112,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
-    }
-    else if let Some(ref matches) = matches.subcommand_matches("auth") {
+    } else if let Some(ref matches) = matches.subcommand_matches("auth") {
         if matches.is_present("logs") {
             handle_auth_logs();
         } else {
@@ -126,12 +123,10 @@ fn main() {
             if let Err(e) = handle_auth(&user, &ssh_key) {
                 println!("watchdog-auth error: {}", e);
                 print_traceback(e);
-                std::process::exit(1); 
+                std::process::exit(1);
             }
         }
-    }
-    else {
+    } else {
         println!("No command passed");
     }
-
 }

@@ -17,12 +17,15 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
 
     let client = reqwest::Client::new();
     let res = client
-      .get(&format!(
-        "{}/access/{}/{}/{}?ref=build",
-        config.keyhouse_base_url, config.keyhouse_hostname, user, hex
+        .get(&format!(
+            "{}/access/{}/{}/{}?ref=build",
+            config.keyhouse_base_url, config.keyhouse_hostname, user, hex
         ))
-      .header("Authorization", &format!("Bearer {}", config.keyhouse_token))
-      .send();
+        .header(
+            "Authorization",
+            &format!("Bearer {}", config.keyhouse_token),
+        )
+        .send();
 
     match res {
         Ok(r) => {
@@ -32,21 +35,23 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
                 return Ok(false);
             }
         }
-        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}",e)))
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
     }
 }
 
 fn get_content_from_github_json(json_text: &str) -> Result<String> {
     let json: serde_json::Value = serde_json::from_str(json_text)
                                     .chain_err(|| "Invalid JSON recieved from GitHub. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
-    let encoded_content = json["content"].as_str()
-                            .ok_or(Error::from(""))
-                            .chain_err(|| "No key 'content' found in JSON recieved from GitHub.")?;
+    let encoded_content = json["content"]
+        .as_str()
+        .ok_or(Error::from(""))
+        .chain_err(|| "No key 'content' found in JSON recieved from GitHub.")?;
     let len = str::len(encoded_content);
     let content = base64::decode(&encoded_content[..len-2])
                     .chain_err(|| "Bad Base64 Encoding. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
-    Ok(String::from_utf8(content).chain_err(|| "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable.")?)
-
+    Ok(String::from_utf8(content).chain_err(|| {
+        "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable."
+    })?)
 }
 
 pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
@@ -69,6 +74,6 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
                 return Ok(String::from("UNKNOWN"));
             }
         }
-        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}",e)))
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
     }
 }

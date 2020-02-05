@@ -1,8 +1,8 @@
-use std::env;
-use common_lib::notifier::{Notifier, Slack};
 use common_lib::config::read_config;
-use common_lib::init::init;
 use common_lib::errors::*;
+use common_lib::init::init;
+use common_lib::notifier::{Notifier, Slack};
+use std::env;
 use std::process::Command;
 
 pub fn handle_su() -> Result<()> {
@@ -14,7 +14,6 @@ pub fn handle_su() -> Result<()> {
 
     let pam_user = env::var("PAM_USER")
                      .chain_err(|| "PAM_USER not set. If you are running this by `watchdog su`, please don't. It's an internal command, intended to be used by PAM.")?;
-
 
     if pam_type == "open_session" {
         let config = read_config()?;
@@ -29,6 +28,8 @@ pub fn handle_su() -> Result<()> {
 }
 
 pub fn handle_su_logs() {
-    Command::new("less").arg("/opt/watchdog/logs/su.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
-
+    Command::new("less")
+        .arg("/opt/watchdog/logs/su.logs")
+        .status()
+        .expect("Something went wrong. Is `less` command present in your environment?");
 }

@@ -1,9 +1,9 @@
-use std::fs;
-use common_lib::notifier::{Notifier, Slack};
-use common_lib::init::init;
 use common_lib::config::read_config;
-use common_lib::keyhouse::{validate_user, get_name};
 use common_lib::errors::*;
+use common_lib::init::init;
+use common_lib::keyhouse::{get_name, validate_user};
+use common_lib::notifier::{Notifier, Slack};
+use std::fs;
 use std::process::Command;
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
@@ -28,20 +28,24 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             let name = get_name(&config, ssh_key)?;
 
             match Slack::new(&config) {
-                Some(notifier) => {
-                    notifier.post_ssh_summary(&config, false, name, ssh_host_username.to_string())?
-                }
+                Some(notifier) => notifier.post_ssh_summary(
+                    &config,
+                    false,
+                    name,
+                    ssh_host_username.to_string(),
+                )?,
                 None => {}
             };
             Ok(())
         }
 
-        Err(e) => {
-            Err(e).chain_err(|| "Error while validating user from keyhouse")
-        }
+        Err(e) => Err(e).chain_err(|| "Error while validating user from keyhouse"),
     }
 }
 
 pub fn handle_auth_logs() {
-    Command::new("less").arg("/opt/watchdog/logs/ssh.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
+    Command::new("less")
+        .arg("/opt/watchdog/logs/ssh.logs")
+        .status()
+        .expect("Something went wrong. Is `less` command present in your environment?");
 }

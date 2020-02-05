@@ -1,6 +1,6 @@
+use crate::errors::*;
 use serde_derive::Deserialize;
 use std::fs;
-use crate::errors::*;
 
 #[derive(Deserialize, Clone)]
 pub struct TempEnvirontment {

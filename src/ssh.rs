@@ -1,11 +1,11 @@
-use std::env;
-use common_lib::notifier::{Notifier, Slack};
-use common_lib::init::init;
 use common_lib::config::read_config;
 use common_lib::environment::read_temp_env;
-use common_lib::keyhouse::get_name;
-use common_lib::utils::clear_file;
 use common_lib::errors::*;
+use common_lib::init::init;
+use common_lib::keyhouse::get_name;
+use common_lib::notifier::{Notifier, Slack};
+use common_lib::utils::clear_file;
+use std::env;
 use std::process::Command;
 
 pub fn handle_ssh() -> Result<()> {
@@ -20,7 +20,9 @@ pub fn handle_ssh() -> Result<()> {
         let name = get_name(&config, &env.ssh_key)?;
 
         match Slack::new(&config) {
-            Some(notifier) => notifier.post_ssh_summary(&config, true, name, env.ssh_host_username)?,
+            Some(notifier) => {
+                notifier.post_ssh_summary(&config, true, name, env.ssh_host_username)?
+            }
             None => {}
         };
 
@@ -30,5 +32,8 @@ pub fn handle_ssh() -> Result<()> {
 }
 
 pub fn handle_ssh_logs() {
-    Command::new("less").arg("/opt/watchdog/logs/ssh.logs").status().expect("Something went wrong. Is `less` command present in your environment?");
+    Command::new("less")
+        .arg("/opt/watchdog/logs/ssh.logs")
+        .status()
+        .expect("Something went wrong. Is `less` command present in your environment?");
 }
