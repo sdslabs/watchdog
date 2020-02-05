@@ -3,11 +3,11 @@ extern crate crypto;
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::config::Config;
-use crate::errors::*;
-
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+
+use crate::config::Config;
+use crate::errors::*;
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let mut hasher = Sha256::new();

@@ -1,12 +1,13 @@
-use common_lib::config::read_config;
-use common_lib::environment::read_temp_env;
-use common_lib::errors::*;
-use common_lib::init::init;
-use common_lib::keyhouse::get_name;
-use common_lib::notifier::{Notifier, Slack};
-use common_lib::utils::clear_file;
 use std::env;
 use std::process::Command;
+
+use lib::config::read_config;
+use lib::environment::read_temp_env;
+use lib::errors::*;
+use lib::init::init;
+use lib::keyhouse::get_name;
+use lib::notifier::{Notifier, Slack};
+use lib::utils::clear_file;
 
 pub fn handle_ssh() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")

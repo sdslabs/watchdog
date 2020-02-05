@@ -1,10 +1,11 @@
-use common_lib::config::read_config;
-use common_lib::errors::*;
-use common_lib::init::init;
-use common_lib::keyhouse::{get_name, validate_user};
-use common_lib::notifier::{Notifier, Slack};
 use std::fs;
 use std::process::Command;
+
+use lib::config::read_config;
+use lib::errors::*;
+use lib::init::init;
+use lib::keyhouse::{get_name, validate_user};
+use lib::notifier::{Notifier, Slack};
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;

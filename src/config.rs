@@ -1,6 +1,8 @@
-use crate::errors::*;
-use serde_derive::Deserialize;
 use std::fs;
+
+use serde_derive::Deserialize;
+
+use crate::errors::*;
 
 #[derive(Deserialize, Clone)]
 pub struct Config {

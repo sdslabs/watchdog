@@ -5,13 +5,15 @@ mod ssh;
 mod su;
 mod sudo;
 
-use crate::auth::{handle_auth, handle_auth_logs};
-use crate::ssh::{handle_ssh, handle_ssh_logs};
-use crate::su::{handle_su, handle_su_logs};
-use crate::sudo::{handle_sudo, handle_sudo_logs};
-use common_lib::errors::Error;
-
 use clap::{App, Arg, SubCommand};
+
+use lib::errors::Error;
+
+use auth::{handle_auth, handle_auth_logs};
+use ssh::{handle_ssh, handle_ssh_logs};
+use su::{handle_su, handle_su_logs};
+use sudo::{handle_sudo, handle_sudo_logs};
+
 
 fn make_app<'a, 'b>() -> App<'a, 'b> {
     App::new("Watchdog")

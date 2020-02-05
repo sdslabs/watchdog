@@ -1,11 +1,13 @@
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::config::Config;
-use crate::errors::*;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use reqwest::header::CONTENT_TYPE;
 use serde_json::json;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::config::Config;
+use crate::errors::*;
 
 /// Notifier is an abstract trait to post messages to webhook
 ///

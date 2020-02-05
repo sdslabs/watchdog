@@ -1,5 +1,6 @@
-use crate::errors::*;
 use std::fs;
+
+use crate::errors::*;
 
 pub fn clear_file(path: &str) -> Result<()> {
     fs::write(path, "")?;

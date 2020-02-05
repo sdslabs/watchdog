@@ -1,9 +1,10 @@
-use common_lib::config::read_config;
-use common_lib::errors::*;
-use common_lib::init::init;
-use common_lib::notifier::{Notifier, Slack};
 use std::env;
 use std::process::Command;
+
+use lib::config::read_config;
+use lib::errors::*;
+use lib::init::init;
+use lib::notifier::{Notifier, Slack};
 
 pub fn handle_sudo() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")

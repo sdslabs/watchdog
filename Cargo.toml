@@ -20,5 +20,5 @@ name = "watchdog"
 path = "src/main.rs"
 
 [lib]
-name = "common_lib"
+name = "lib"
 path = "src/lib.rs"
