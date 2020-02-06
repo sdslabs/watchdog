@@ -17,7 +17,7 @@ pub fn handle_ssh() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
 
-        let env = read_temp_env(&config.temp_env_file)?;
+        let env = read_temp_env("/opt/watchdog/ssh_env")?;
         let name = get_name(&config, &env.ssh_key)?;
 
         match Slack::new(&config) {
@@ -27,7 +27,7 @@ pub fn handle_ssh() -> Result<()> {
             None => {}
         };
 
-        clear_file(&config.temp_env_file)?;
+        clear_file("/opt/watchdog/ssh_env")?;
     }
     Ok(())
 }

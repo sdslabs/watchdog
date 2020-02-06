@@ -18,7 +18,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                 ssh_host_username, ssh_key
             );
 
-            fs::write(&config.temp_env_file, data)
+            fs::write("/opt/watchdog/ssh_env", data)
                         .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
 
             println!("{}", ssh_key);
