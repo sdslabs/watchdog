@@ -4,7 +4,7 @@ use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
-use lib::notifier::{Notifier, Slack};
+use lib::notifier;
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
@@ -27,15 +27,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
         Ok(false) => {
             let name = get_name(&config, ssh_key)?;
 
-            match Slack::new(&config) {
-                Some(notifier) => notifier.post_ssh_summary(
-                    &config,
-                    false,
-                    name,
-                    ssh_host_username.to_string(),
-                )?,
-                None => {}
-            };
+            notifier::post_ssh_summary(&config, false, name, ssh_host_username.to_string())?;
             Ok(())
         }
 

@@ -13,9 +13,9 @@ use crate::errors::*;
 ///
 /// This trait can be implemented for various webhook based applications
 /// like Slack, Discord etc.
-pub trait Notifier<'a> {
+pub trait Notifier {
     /// Returns corresponding `Notifier` from watchdog config
-    fn new(conf: &'a Config) -> Option<Self>
+    fn new(conf: &Config) -> Option<Self>
     where
         Self: Sized;
     /// URL returns the webhook url of the Notifier
@@ -36,11 +36,61 @@ pub trait Notifier<'a> {
     ) -> Result<()>;
 }
 
+struct GlobalNotifier(Vec<Box<dyn Notifier>>);
+
+/// Post summary for sudo attempts
+pub fn post_sudo_summary(conf: &Config, pam_ruser: String) -> Result<()> {
+    let global_notifier = setup(conf);
+    for notif in &global_notifier.0 {
+        let pam_ruser_copy = String::from(&pam_ruser);
+        notif.post_sudo_summary(conf, pam_ruser_copy)?
+    }
+    Ok(())
+}
+
+/// Post summary for su attempts
+pub fn post_su_summary(conf: &Config, from: String, to: String) -> Result<()> {
+    let global_notifier = setup(conf);
+    for notif in &global_notifier.0 {
+        let from_copy = String::from(&from);
+        let to_copy = String::from(&to);
+        notif.post_su_summary(conf, from_copy, to_copy)?;
+    }
+    Ok(())
+}
+
+/// Post summary for ssh attempts
+pub fn post_ssh_summary(
+    conf: &Config,
+    success: bool,
+    user: String,
+    pam_ruser: String,
+) -> Result<()> {
+    let global_notifier = setup(conf);
+    for notif in &global_notifier.0 {
+        let user_copy = String::from(&user);
+        let pam_ruser_copy = String::from(&pam_ruser);
+        notif.post_ssh_summary(conf, success, user_copy, pam_ruser_copy)?;
+    }
+    Ok(())
+}
+
+fn setup(conf: &Config) -> GlobalNotifier {
+    let mut register: Vec<Box<dyn Notifier>> = Vec::new();
+    match Slack::new(conf) {
+        Some(slack) => {
+            register.push(Box::new(slack));
+        }
+        None => {}
+    };
+    GlobalNotifier(register)
+}
+
 /// Implements `Notifier` trait for slack
 #[derive(Debug)]
-pub struct Slack<'a>(&'a str);
+pub struct Slack(String);
 
-impl Slack<'_> {
+impl Slack {
     /// Creates JSON to be sent in the make_request
     ///
     /// Takes two arguments: `text` and `color`.
@@ -66,17 +116,17 @@ impl Slack<'_> {
     }
 }
 
-impl<'a> Notifier<'a> for Slack<'a> {
-    fn new(conf: &'a Config) -> Option<Slack> {
-        let url: &'a str = conf.slack_api_url.trim();
+impl Notifier for Slack {
+    fn new(conf: &Config) -> Option<Slack> {
+        let url: &str = conf.slack_api_url.trim();
         if url.len() == 0 {
             return None;
         }
-        Some(Slack(url))
+        Some(Slack(String::from(url)))
     }
 
     fn url(&self) -> &str {
-        self.0
+        &self.0
     }
 
     fn make_request(&self, json: String) -> Result<()> {

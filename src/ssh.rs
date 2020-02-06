@@ -6,7 +6,7 @@ use lib::environment::read_temp_env;
 use lib::errors::*;
 use lib::init::init;
 use lib::keyhouse::get_name;
-use lib::notifier::{Notifier, Slack};
+use lib::notifier;
 use lib::utils::clear_file;
 
 pub fn handle_ssh() -> Result<()> {
@@ -20,12 +20,7 @@ pub fn handle_ssh() -> Result<()> {
         let env = read_temp_env("/opt/watchdog/ssh_env")?;
         let name = get_name(&config, &env.ssh_key)?;
 
-        match Slack::new(&config) {
-            Some(notifier) => {
-                notifier.post_ssh_summary(&config, true, name, env.ssh_host_username)?
-            }
-            None => {}
-        };
+        notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
 
         clear_file("/opt/watchdog/ssh_env")?;
     }

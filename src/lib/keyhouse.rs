@@ -61,9 +61,10 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     let hex = hasher.result_str();
 
     let client = reqwest::Client::new();
-    let res = client.get(&format!(
-        "{}/names/{}?ref=build",
-        config.keyhouse_base_url, hex
+    let res = client
+        .get(&format!(
+            "{}/names/{}?ref=build",
+            config.keyhouse_base_url, hex
         ))
         .header(
             "Authorization",

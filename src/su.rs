@@ -4,7 +4,7 @@ use std::process::Command;
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
-use lib::notifier::{Notifier, Slack};
+use lib::notifier;
 
 pub fn handle_su() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -20,10 +20,7 @@ pub fn handle_su() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
 
-        match Slack::new(&config) {
-            Some(notifier) => notifier.post_su_summary(&config, pam_ruser, pam_user)?,
-            None => {}
-        };
+        notifier::post_su_summary(&config, pam_ruser, pam_user)?;
     }
     Ok(())
 }

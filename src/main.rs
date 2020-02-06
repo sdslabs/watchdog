@@ -11,11 +11,10 @@ use clap::{App, Arg, SubCommand};
 
 use lib::errors::Error;
 
-use auth::{handle_auth};
+use auth::handle_auth;
 use ssh::{handle_ssh, handle_ssh_logs};
 use su::{handle_su, handle_su_logs};
 use sudo::{handle_sudo, handle_sudo_logs};
-
 
 fn make_app<'a, 'b>() -> App<'a, 'b> {
     App::new("Watchdog")
@@ -106,17 +105,13 @@ fn main() {
         let filter = matches.value_of("filter").unwrap();
         if filter == "all" {
             handle_all_logs();
-        }
-        else if filter == "sudo" {
+        } else if filter == "sudo" {
             handle_sudo_logs();
-        }
-        else if filter == "su" {
+        } else if filter == "su" {
             handle_su_logs();
-        }
-        else if filter == "ssh" {
+        } else if filter == "ssh" {
             handle_ssh_logs();
-        }
-        else {
+        } else {
             println!("Invalid Filter");
         }
     } else {
