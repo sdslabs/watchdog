@@ -1,5 +1,4 @@
 use std::fs;
-use std::process::Command;
 
 use lib::config::read_config;
 use lib::errors::*;
@@ -42,11 +41,4 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
 
         Err(e) => Err(e).chain_err(|| "Error while validating user from keyhouse"),
     }
-}
-
-pub fn handle_auth_logs() {
-    Command::new("less")
-        .arg("/opt/watchdog/logs/ssh.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }
