@@ -121,13 +121,13 @@ impl<'a> Notifier<'a> for Slack<'a> {
         let text: String;
         if success {
             text = format!(
-                "test: {} logged in on {}@{}",
+                "{} logged in on {}@{}",
                 user, pam_ruser, conf.keyhouse_hostname
             );
             color = "#36a64f";
         } else {
             text = format!(
-                "test: {} tried to log in on {}@{}",
+                "{} tried to log in on {}@{}",
                 user, pam_ruser, conf.keyhouse_hostname
             );
             color = "#f29513";
