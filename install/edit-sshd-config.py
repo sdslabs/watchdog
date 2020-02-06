@@ -1,17 +1,16 @@
-
 watchdog_config = """
 # SDSLabs Watchdog configuration START
 
 UsePAM yes
 PasswordAuthentication no
-AuthorizedKeysCommand /opt/watchdog/bin/auth_keys_cmd %u %h %t %f %k
+AuthorizedKeysCommand /opt/watchdog/bin/watchdog auth -u %u -t %t -p %k
 AuthorizedKeysCommandUser root
 
 # SDSLabs Watchdog configuration END
 """
 
 
-modified_keys = [
+modified_options = [
 	'AuthorizedKeysCommand',
 	'AuthorizedKeysCommandUser',
 	'PasswordAuthentication',
@@ -52,24 +51,24 @@ def process_line(line):
 		i = min(i, j)
 	key = l[:i]
 	value = l[i+1:].strip()
-	if key in modified_keys:
+	if key in modified_options:
 		# comment this line
 		return '# Watchdog: Commenting the line below out\n#' + line
 	else:
 		return line
 
 def main():
-	iput = open("/etc/ssh/sshd_config")
-	oput = open("tmp_sshd_config", "w")
-	lines = iput.readlines()
+	inp = open("/etc/ssh/sshd_config")
+	out = open("watchdog_tmp_sshd_config", "w")
+	lines = inp.readlines()
 	for l in lines:
-		oputline = process_line(l)
-		oput.write(oputline)
+		output_line = process_line(l)
+		out.write(oputline)
 
-	oput.write(watchdog_config)
+	out.write(watchdog_config)
 
-	iput.close()
-	oput.close()
+	inp.close()
+	out.close()
 
 
 main()

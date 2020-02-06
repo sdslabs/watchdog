@@ -1,6 +1,4 @@
 slack_api_url = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
-keyhouse_base_url = 'https://organization.github.io/keyhouse-repo'
+keyhouse_base_url = 'https://api.github.com/repos/sdslabs/keyhouse-template/contents'
 keyhouse_token = 'secret_token'
 keyhouse_hostname = 'virtual-machine'
-watchdog_base_url = 'https://api.github.com/repos/sdslabs/watchdog/contents'
-temp_env_file = '/opt/watchdog/ssh_env'
