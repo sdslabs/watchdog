@@ -4,7 +4,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/sdslabs/watchdog/blob/master/LICENSE.md)
 
-Watchdog is a lightweight server access management system which does not itself need to be hosted on a server.
+Watchdog is a personalised server access management tool (and a slack bot) which keeps a track of all the administrative rights attempts (like sudo and su) on server (via SSH) and allows/disallows log-in attempts based on public key of user and logs all activity in form of slack message. It provides easy granting/revoking access to servers to team members through pull requests on a keyhouse repository.
 
 ## Contents
 
@@ -22,10 +22,10 @@ Watchdog is a lightweight server access management system which does not itself 
 ## Features
 
 * Request SSH access to a server just by creating a PR to the Keyhouse repository.
-* Stateless and serverless. Watchdog runs on a single binary (can't make any promises on keeping this number the same though)
+* Stateless and serverless. Watchdog runs on a single binary.
 * Optional server activity logs to your favourite workspace like Slack or Discord.
 * Easy Installation and Configuration
-* Get notified when someone escalates privilidges or performs administrative tasks using `sudo` or `su`
+* Get notified when someone escalates privileges or performs administrative tasks using `sudo` or `su`
 
 ## Dependencies
 
@@ -38,9 +38,9 @@ The following softwares are required for running Watchdog:-
 
 1. Create a Keyhouse Repository using the template repository [here](https://github.com/sdslabs/keyhouse-template).
 
-2. Clone the the watchdog repository
+2. Clone the watchdog repository
 
- `git clone https://github.com/sdslabs/watchdog.git`
+    `git clone https://github.com/sdslabs/watchdog.git`
 
 3. Change into the repository directory and build the latest binaries using Cargo
 
@@ -48,17 +48,36 @@ The following softwares are required for running Watchdog:-
 
 4. Copy `sample.config.toml` to `config.toml` and make changes to the config this way:
 
-	1. `slack_api_url` : Make an incoming hook to your Slack workspace from [this app](https://slack.com/apps/A0F7XDUAZ-incoming-webhooks) and paste the hook URL here. You can customize the icon and name as you like.
+    ```toml
+    # Hostname of the machine running watchdog. Note that this should be
+    # same as the file you create in the `hosts` directory in keyhouse.
+    hostname = 'virtual-machine'
 
-	2. `keyhouse_base_url`: It should be of the format `https://api.github.com/repos/<ORGANIZATION>/<KEYHOUSE-REPOSITORY>/contents`.
+    # Keyhouse repository configuration
+    [keyhouse]
 
-	3. `keyhouse_token`: This should be a personal access token made by a member of organization on his/her behalf who can read the Keyhouse repository. Click [here](https://github.com/settings/tokens/new?description=Keyhouse%20Token&scopes=repo) to make a new token with correct scopes.
+    # URL of the Keyhouse repository, it should be of the format
+    # `https://api.github.com/repos/<ORGANIZATION>/<KEYHOUSE-REPOSITORY>/contents`
+    base_url = 'https://api.github.com/repos/sdslabs/keyhouse-template/contents'
 
-	4. `keyhouse_hostname`: Name you want to give to this server. Note that this should be same as the file you create in the `hosts` directory in keyhouse.
+    # This should be a personal access token made by a member of organization on his/her
+    # behalf who can read the Keyhouse repository. Go to this
+    # https://github.com/settings/tokens/new?description=Keyhouse%20Token&scopes=repo
+    # to make a new token with correct scopes.
+    token = 'secret_token'
 
-5. Once you are done configuring, run this command with root (sudo) priviledges
+    # Webhook APIs corresponding to various notifiers
+    [notifiers]
 
-    `cd install && ./install.sh`
+    # Make an incoming hook to your Slack workspace from this
+    # app(https://slack.com/apps/A0F7XDUAZ-incoming-webhooks)
+    # and paste the hook URL here. You can customize the icon and name as you like.
+    slack = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
+    ```
+
+5. Once you are done configuring, run this command with root(sudo) privileges
+
+    `cd install && sudo ./install.sh`
 
 6. Add `/opt/watchdog/bin` to your PATH variable.
 
@@ -66,9 +85,7 @@ The following softwares are required for running Watchdog:-
 
 ```
 $ watchdog --help
-```
 
-```
 Watchdog 0.1.0
 SDSLabs <contact@sdslabs.co>
 Simple server access management system on a binary
@@ -92,14 +109,13 @@ SUBCOMMANDS:
 ```
 
 Though most of the commands are for internal use of PAM, you can edit configuration of Watchdog any time
+
 ```sh
 $ watchdog config --help
 ```
 
-```
-```
-
 To view logs
+
 ```sh
 $ watchdog logs --help
 ```
@@ -112,9 +128,9 @@ Open your favourite terminal and perform the following tasks:-
 
 1. Clone this repository.
 
-    ```bash
-    $ git clone https://github.com/sdslabs/watchdog
-    ```
+```bash
+$ git clone https://github.com/sdslabs/watchdog
+```
 
 2. Make the required changes inside the source code directory ([src/](src/))
 
