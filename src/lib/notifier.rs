@@ -118,7 +118,7 @@ impl Slack {
 
 impl Notifier for Slack {
     fn new(conf: &Config) -> Option<Slack> {
-        let url: &str = conf.slack_api_url.trim();
+        let url: &str = conf.notifiers.slack.trim();
         if url.len() == 0 {
             return None;
         }
@@ -142,7 +142,7 @@ impl Notifier for Slack {
     }
 
     fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
-        let text = format!("sudo attempted on {}@{}", pam_ruser, conf.keyhouse_hostname);
+        let text = format!("sudo attempted on {}@{}", pam_ruser, conf.hostname);
         let json = Slack::create_json(&text, "#36a64f")?;
         self.make_request(json)
             .chain_err(|| "Couldn't post sudo summary to Slack")?;
@@ -150,10 +150,7 @@ impl Notifier for Slack {
     }
 
     fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()> {
-        let text = format!(
-            "switched user from {} to {} on {}",
-            from, to, conf.keyhouse_hostname
-        );
+        let text = format!("switched user from {} to {} on {}", from, to, conf.hostname);
         let json = Slack::create_json(&text, "#36a64f")?;
         self.make_request(json)
             .chain_err(|| "Couldn't post su summary to Slack")?;
@@ -170,15 +167,12 @@ impl Notifier for Slack {
         let color: &str;
         let text: String;
         if success {
-            text = format!(
-                "{} logged in on {}@{}",
-                user, pam_ruser, conf.keyhouse_hostname
-            );
+            text = format!("{} logged in on {}@{}", user, pam_ruser, conf.hostname);
             color = "#36a64f";
         } else {
             text = format!(
                 "{} tried to log in on {}@{}",
-                user, pam_ruser, conf.keyhouse_hostname
+                user, pam_ruser, conf.hostname
             );
             color = "#f29513";
         }

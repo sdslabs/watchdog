@@ -1,4 +1,24 @@
-slack_api_url = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
-keyhouse_base_url = 'https://api.github.com/repos/sdslabs/keyhouse-template/contents'
-keyhouse_token = 'secret_token'
-keyhouse_hostname = 'virtual-machine'
+# Hostname of the machine running watchdog. Note that this should be
+# same as the file you create in the `hosts` directory in keyhouse.
+hostname = 'virtual-machine'
+
+# Keyhouse repository configuration
+[keyhouse]
+
+# URL of the Keyhouse repository, it should be of the format
+# `https://api.github.com/repos/<ORGANIZATION>/<KEYHOUSE-REPOSITORY>/contents`
+base_url = 'https://api.github.com/repos/sdslabs/keyhouse-template/contents'
+
+# This should be a personal access token made by a member of organization on his/her
+# behalf who can read the Keyhouse repository. Go to this
+# https://github.com/settings/tokens/new?description=Keyhouse%20Token&scopes=repo
+# to make a new token with correct scopes.
+token = 'secret_token'
+
+# Webhook APIs corresponding to various notifiers
+[notifiers]
+
+# Make an incoming hook to your Slack workspace from this
+# app(https://slack.com/apps/A0F7XDUAZ-incoming-webhooks)
+# and paste the hook URL here. You can customize the icon and name as you like.
+slack = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
