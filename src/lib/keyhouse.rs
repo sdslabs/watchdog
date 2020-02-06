@@ -60,10 +60,16 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
 
-    let res = reqwest::get(&format!(
-        "{}/names/{}?ref=build&access_token={}",
-        config.keyhouse_base_url, hex, config.keyhouse_token
-    ));
+    let client = reqwest::Client::new();
+    let res = client.get(&format!(
+        "{}/names/{}?ref=build",
+        config.keyhouse_base_url, hex
+        ))
+        .header(
+            "Authorization",
+            &format!("Bearer {}", config.keyhouse_token),
+        )
+        .send();
 
     match res {
         Ok(mut r) => {
