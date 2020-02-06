@@ -1,12 +1,13 @@
-extern crate log;
 extern crate reqwest;
 extern crate serde_json;
 
-use crate::config;
-use log::info;
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use reqwest::header::CONTENT_TYPE;
 use serde_json::json;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::config::Config;
+use crate::errors::*;
 
 /// Notifier is an abstract trait to post messages to webhook
 ///
@@ -14,25 +15,25 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// like Slack, Discord etc.
 pub trait Notifier<'a> {
     /// Returns corresponding `Notifier` from watchdog config
-    fn new(conf: &'a config::Config) -> Option<Self>
+    fn new(conf: &'a Config) -> Option<Self>
     where
         Self: Sized;
     /// URL returns the webhook url of the Notifier
     fn url(&self) -> &str;
     /// Send request with message
-    fn make_request(&self, json: String);
+    fn make_request(&self, json: String) -> Result<()>;
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &config::Config, pam_ruser: String);
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()>;
     /// Post summary for su attempts
-    fn post_su_summary(&self, conf: &config::Config, from: String, to: String);
+    fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()>;
     /// Post summary for ssh attempts
     fn post_ssh_summary(
         &self,
-        conf: &config::Config,
+        conf: &Config,
         success: bool,
         user: String,
         pam_ruser: String,
-    );
+    ) -> Result<()>;
 }
 
 /// Implements `Notifier` trait for slack
@@ -47,12 +48,10 @@ impl Slack<'_> {
     ///   It accepts markdown format string.
     /// * `color` is a hexcode color string prefixed with `#`.
     ///   It's the color of message accent on Slack.
-    fn create_json(text: &str, color: &str) -> String {
+    fn create_json(text: &str, color: &str) -> Result<String> {
         let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
-        json!({
+        let since_the_epoch = start.duration_since(UNIX_EPOCH)?;
+        let json_text = json!({
             "attachments": [
                 {
                     "text": format!("{}", text),
@@ -62,12 +61,13 @@ impl Slack<'_> {
                 }
             ]
         })
-        .to_string()
+        .to_string();
+        Ok(json_text)
     }
 }
 
 impl<'a> Notifier<'a> for Slack<'a> {
-    fn new(conf: &'a config::Config) -> Option<Slack> {
+    fn new(conf: &'a Config) -> Option<Slack> {
         let url: &'a str = conf.slack_api_url.trim();
         if url.len() == 0 {
             return None;
@@ -79,7 +79,7 @@ impl<'a> Notifier<'a> for Slack<'a> {
         self.0
     }
 
-    fn make_request(&self, json: String) {
+    fn make_request(&self, json: String) -> Result<()> {
         let client = reqwest::Client::new();
         let res = client
             .post(self.url())
@@ -87,52 +87,54 @@ impl<'a> Notifier<'a> for Slack<'a> {
             .body(json)
             .send();
 
-        match res {
-            Ok(_) => {}
-            Err(_) => {
-                info!("Couldn't make request on slack. Activity couldn't be logged on slack.")
-            }
-        }
+        res.chain_err(|| "Error while creating a request to Slack Webhook")?;
+        Ok(())
     }
 
-    fn post_sudo_summary(&self, conf: &config::Config, pam_ruser: String) {
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
         let text = format!("sudo attempted on {}@{}", pam_ruser, conf.keyhouse_hostname);
-        let json = Slack::create_json(&text, "#36a64f");
-        self.make_request(json);
+        let json = Slack::create_json(&text, "#36a64f")?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post sudo summary to Slack")?;
+        Ok(())
     }
 
-    fn post_su_summary(&self, conf: &config::Config, from: String, to: String) {
+    fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()> {
         let text = format!(
             "switched user from {} to {} on {}",
             from, to, conf.keyhouse_hostname
         );
-        let json = Slack::create_json(&text, "#36a64f");
-        self.make_request(json);
+        let json = Slack::create_json(&text, "#36a64f")?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post su summary to Slack")?;
+        Ok(())
     }
 
     fn post_ssh_summary(
         &self,
-        conf: &config::Config,
+        conf: &Config,
         success: bool,
         user: String,
         pam_ruser: String,
-    ) {
+    ) -> Result<()> {
         let color: &str;
         let text: String;
         if success {
             text = format!(
-                "test: {} logged in on {}@{}",
+                "{} logged in on {}@{}",
                 user, pam_ruser, conf.keyhouse_hostname
             );
             color = "#36a64f";
         } else {
             text = format!(
-                "test: {} tried to log in on {}@{}",
+                "{} tried to log in on {}@{}",
                 user, pam_ruser, conf.keyhouse_hostname
             );
             color = "#f29513";
         }
-        let json = Slack::create_json(&text, color);
-        self.make_request(json);
+        let json = Slack::create_json(&text, color)?;
+        self.make_request(json)
+            .chain_err(|| "Couldn't post ssh summary to Slack")?;
+        Ok(())
     }
 }
