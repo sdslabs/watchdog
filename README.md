@@ -91,11 +91,10 @@ SDSLabs <contact@sdslabs.co>
 Simple server access management system on a binary
 
 USAGE:
-    watchdog [FLAGS] [SUBCOMMAND]
+    watchdog [SUBCOMMAND]
 
 FLAGS:
     -h, --help       Prints help information
-    -l, --logs       Get the global watchdog logs
     -V, --version    Prints version information
 
 SUBCOMMANDS:
@@ -103,6 +102,7 @@ SUBCOMMANDS:
               `AuthorizedKeysCommand` in sshd_config.
     config    Get or set Watchdog configuration
     help      Prints this message or the help of the given subcommand(s)
+    logs      Get the global watchdog logs
     ssh       Handles the PAM SSH calls by pam_exec for Watchdog
     su        Handles the PAM su calls by pam_exec for Watchdog
     sudo      Handles the PAM sudo calls by pam_exec for Watchdog
