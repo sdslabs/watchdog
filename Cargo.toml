@@ -14,6 +14,7 @@ base64 = "0.10.1"
 rust-crypto = "0.2.36"
 clap = "2.19"
 error-chain="0.12.1"
+toml_edit="0.1.5"
 
 [[ bin ]]
 name = "watchdog"
