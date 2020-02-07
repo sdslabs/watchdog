@@ -114,6 +114,8 @@ Though most of the commands are for internal use of PAM, you can edit configurat
 $ watchdog config --help
 ```
 
+_NOTE:_ config can be fetched/edited only with `root` (`sudo`) access.
+
 To view logs
 
 ```sh
