@@ -63,7 +63,7 @@ def main():
 	lines = inp.readlines()
 	for l in lines:
 		output_line = process_line(l)
-		out.write(oputline)
+		out.write(output_line)
 
 	out.write(watchdog_config)
 
