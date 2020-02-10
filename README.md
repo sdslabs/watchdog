@@ -8,15 +8,12 @@ Watchdog is a personalised server access management tool (and a slack bot) which
 
 ## Contents
 
-* [Overview](#overview)
 * [Features](#features)
 * [Dependencies](#dependencies)
 * [Installation](#installation)
 * [Usage](#usage)
 * [Development](#development)
 * [Contact](#contact)
-
-## Overview
 
 
 ## Features
