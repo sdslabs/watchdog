@@ -7,8 +7,9 @@ mod sudo;
 
 use std::process::Command;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, SubCommand};
 
+use lib::config::{get_config_value, set_config_value};
 use lib::errors::Error;
 
 use auth::handle_auth;
@@ -56,7 +57,14 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
                 .takes_value(true)
                 .required(true)))
         .subcommand(SubCommand::with_name("config")
-            .about("Get or set Watchdog configuration"))
+            .about("Get or set Watchdog configuration")
+            .setting(AppSettings::ArgRequiredElseHelp)
+            .arg(Arg::with_name("key")
+                 .index(1)
+                 .help("Config variable to be fetched/set"))
+            .arg(Arg::with_name("value")
+                 .index(2)
+                 .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
 }
 
 fn print_traceback(e: Error) {
@@ -113,9 +121,35 @@ fn main() {
             handle_ssh_logs();
         } else {
             println!("Invalid Filter");
+            std::process::exit(1);
         }
+    } else if let Some(ref matches) = matches.subcommand_matches("config") {
+        let key = matches.value_of("key").unwrap();
+        let val = matches.value_of("value");
+        let _ = match val {
+            Some(v) => {
+                match set_config_value(key, v) {
+                    Ok(()) => {}
+                    Err(e) => {
+                        println!("watchdog-config error: {}", e);
+                        std::process::exit(1);
+                    }
+                };
+            }
+            None => {
+                let v = get_config_value(key);
+                match v {
+                    Ok(s) => println!("{}", s),
+                    Err(e) => {
+                        println!("watchdog-config error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        };
     } else {
         println!("No command passed");
+        std::process::exit(1);
     }
 }
 

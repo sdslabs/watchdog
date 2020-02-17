@@ -13,6 +13,7 @@ chgrp root /opt/watchdog/bin/watchdog
 chmod  700 /opt/watchdog/bin/watchdog
 
 cp ../config.toml /opt/watchdog/config.toml
+chmod 700 /opt/watchdog/config.toml
 
 # edit `sshd_config` file
 cp /etc/ssh/sshd_config /etc/ssh/sshd_config.watchdog.bak
