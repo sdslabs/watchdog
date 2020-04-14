@@ -1,5 +1,7 @@
 use std::fs;
 
+use nix::unistd::{fork, ForkResult};
+
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
@@ -27,7 +29,18 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
         Ok(false) => {
             let name = get_name(&config, ssh_key)?;
 
-            notifier::post_ssh_summary(&config, false, name, ssh_host_username.to_string())?;
+            match fork() {
+                Ok(ForkResult::Parent { .. }) => {}
+                Ok(ForkResult::Child) => {
+                    notifier::post_ssh_summary(
+                        &config,
+                        false,
+                        name,
+                        ssh_host_username.to_string(),
+                    )?;
+                }
+                Err(_) => println!("Fork failed"),
+            }
             Ok(())
         }
 

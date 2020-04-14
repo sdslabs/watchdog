@@ -1,6 +1,8 @@
 use std::env;
 use std::process::Command;
 
+use nix::unistd::{fork, ForkResult};
+
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
@@ -20,7 +22,13 @@ pub fn handle_su() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
 
-        notifier::post_su_summary(&config, pam_ruser, pam_user)?;
+        match fork() {
+            Ok(ForkResult::Parent { .. }) => {}
+            Ok(ForkResult::Child) => {
+                notifier::post_su_summary(&config, pam_ruser, pam_user)?;
+            }
+            Err(_) => println!("Fork failed"),
+        }
     }
     Ok(())
 }

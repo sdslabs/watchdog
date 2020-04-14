@@ -15,7 +15,9 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
     let res = client
         .get(&format!(
             "{}/access/{}/{}/{}?ref=build",
@@ -60,7 +62,9 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
     let res = client
         .get(&format!(
             "{}/names/{}?ref=build",
