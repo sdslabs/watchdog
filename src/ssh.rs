@@ -1,6 +1,8 @@
 use std::env;
 use std::process::Command;
 
+use nix::unistd::{fork, ForkResult};
+
 use lib::config::read_config;
 use lib::environment::read_temp_env;
 use lib::errors::*;
@@ -20,9 +22,15 @@ pub fn handle_ssh() -> Result<()> {
         let env = read_temp_env("/opt/watchdog/ssh_env")?;
         let name = get_name(&config, &env.ssh_key)?;
 
-        notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
-
-        clear_file("/opt/watchdog/ssh_env")?;
+        match fork() {
+            Ok(ForkResult::Parent { .. }) => {
+                clear_file("/opt/watchdog/ssh_env")?;
+            }
+            Ok(ForkResult::Child) => {
+                notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
+            }
+            Err(_) => println!("Fork failed"),
+        }
     }
     Ok(())
 }

@@ -1,6 +1,8 @@
 use std::env;
 use std::process::Command;
 
+use nix::unistd::{fork, ForkResult};
+
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
@@ -17,7 +19,13 @@ pub fn handle_sudo() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
 
-        notifier::post_sudo_summary(&config, pam_ruser)?;
+        match fork() {
+            Ok(ForkResult::Parent { .. }) => {}
+            Ok(ForkResult::Child) => {
+                notifier::post_sudo_summary(&config, pam_ruser)?;
+            }
+            Err(_) => println!("Fork failed"),
+        }
     }
 
     Ok(())
