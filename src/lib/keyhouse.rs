@@ -3,6 +3,8 @@ extern crate crypto;
 extern crate reqwest;
 extern crate serde_json;
 
+use std::time::Duration;
+
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 
