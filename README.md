@@ -6,6 +6,8 @@
 
 Watchdog is a personalised server access management tool (and a slack bot) which keeps a track of all the administrative rights attempts (like sudo and su) on server (via SSH) and allows/disallows log-in attempts based on public key of user and logs all activity in form of slack message. It provides easy granting/revoking access to servers to team members through pull requests on a keyhouse repository.
 
+Check out this blog post to know how watchdog works and design methodologies behind it: https://blog.sdslabs.co/2020/04/watchdog
+
 ## Contents
 
 * [Features](#features)
