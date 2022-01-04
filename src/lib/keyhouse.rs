@@ -51,7 +51,7 @@ fn get_content_from_github_json(json_text: &str) -> Result<String> {
         .ok_or(Error::from(""))
         .chain_err(|| "No key 'content' found in JSON recieved from GitHub.")?;
     let len = str::len(encoded_content);
-    let content = base64::decode(&encoded_content[..len-2])
+    let content = base64::decode(&encoded_content.trim_end())
                     .chain_err(|| "Bad Base64 Encoding. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
     Ok(String::from_utf8(content).chain_err(|| {
         "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable."
