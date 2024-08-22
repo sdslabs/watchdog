@@ -19,6 +19,9 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                 ssh_host_username, ssh_key
             );
 
+            fs::write("~/temp.log", &data)
+                        .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
+
             fs::write("/opt/watchdog/ssh_env", data)
                         .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
 
@@ -28,10 +31,15 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
 
         Ok(false) => {
             let name = get_name(&config, ssh_key)?;
+            fs::write("~/temp.log", "Auth failed")
+                        .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
 
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
+                    fs::write("~/temp.log", &name)
+                        .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
+
                     notifier::post_ssh_summary(
                         &config,
                         false,

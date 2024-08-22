@@ -67,11 +67,11 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
                  .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
 }
 
-fn print_traceback(e: Error) {
+pub fn print_traceback(e: Error) {
     println!("Traceback:");
 
     let mut i = 1;
-    for e in e.iter().skip(1) {
+    for e in e.iter() {
         println!("[{}]: {}", i, e);
         i += 1;
     }

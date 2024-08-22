@@ -1,7 +1,7 @@
-use std::env;
-use std::process::Command;
-
 use nix::unistd::{fork, ForkResult};
+use std::env;
+use std::fs;
+use std::process::Command;
 
 use lib::config::read_config;
 use lib::environment::read_temp_env;
@@ -19,6 +19,9 @@ pub fn handle_ssh() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
 
+        fs::write("~/temp.log", "Triggered by pam")
+        .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
+    
         let env = read_temp_env("/opt/watchdog/ssh_env")?;
         let name = get_name(&config, &env.ssh_key)?;
 
