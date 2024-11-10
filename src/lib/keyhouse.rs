@@ -1,9 +1,10 @@
-extern crate base64;
 extern crate crypto;
 extern crate reqwest;
 extern crate serde_json;
 
 use std::time::Duration;
+
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
@@ -46,13 +47,15 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
 fn get_content_from_github_json(json_text: &str) -> Result<String> {
     let json: serde_json::Value = serde_json::from_str(json_text)
                                     .chain_err(|| "Invalid JSON recieved from GitHub. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
-    let encoded_content = json["content"]
+
+    let b64_enc_content = json["content"]
         .as_str()
         .ok_or(Error::from(""))
         .chain_err(|| "No key 'content' found in JSON recieved from GitHub.")?;
-    let len = str::len(encoded_content);
-    let content = base64::decode(&encoded_content.trim_end())
+
+    let content = STANDARD.decode(b64_enc_content.trim_end().as_bytes())
                     .chain_err(|| "Bad Base64 Encoding. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
+
     Ok(String::from_utf8(content).chain_err(|| {
         "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable."
     })?)
