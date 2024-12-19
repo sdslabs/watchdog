@@ -4,7 +4,7 @@ pub mod init;
 pub mod keyhouse;
 pub mod notifier;
 pub mod utils;
-
+pub mod logger;
 #[macro_use]
 extern crate error_chain;
 

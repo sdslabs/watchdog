@@ -7,6 +7,7 @@ use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
+use lib::logger;
 
 pub fn handle_su() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -25,6 +26,17 @@ pub fn handle_su() -> Result<()> {
         match fork() {
             Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
+                match fork() {
+                    Ok(ForkResult::Parent { .. }) => {}
+                    Ok(ForkResult::Child) => {
+                        // Call the log function in this child process
+                        if let Err(e) = logger::log("su", "SUCCESS", &format!("User: {}", pam_user)) {
+                            println!("Failed to log: {}", e);
+                        }
+                    }
+                    Err(_) => println!("Fork failed"),
+                }
+
                 notifier::post_su_summary(&config, pam_ruser, pam_user)?;
             }
             Err(_) => println!("Fork failed"),

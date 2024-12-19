@@ -6,6 +6,11 @@ mkdir -p /opt/watchdog/logs
 touch /opt/watchdog/logs/sudo.logs
 touch /opt/watchdog/logs/su.logs
 touch /opt/watchdog/logs/ssh.logs
+mkdir -p /opt/watchdog/custom-logs
+touch /opt/watchdog/custom-logs/ssh.logs
+touch /opt/watchdog/custom-logs/sudo.logs
+touch /opt/watchdog/custom-logs/su.logs
+touch /opt/watchdog/custom-logs/auth.logs
 
 cp ../target/release/watchdog /opt/watchdog/bin/watchdog
 chown root /opt/watchdog/bin/watchdog

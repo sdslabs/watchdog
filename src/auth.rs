@@ -7,6 +7,7 @@ use lib::errors::*;
 use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
 use lib::notifier;
+use lib::logger;
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
@@ -32,6 +33,16 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
+                    match fork() {
+                        Ok(ForkResult::Parent { .. }) => {}
+                        Ok(ForkResult::Child) => {
+                            if let Err(e) = logger::log("auth", "SUCCESS", &format!("User: {}", name)) {
+                                println!("Failed to log: {}", e);
+                            }
+                        }
+                        Err(_) => println!("Fork failed"),
+                    }
+
                     notifier::post_ssh_summary(
                         &config,
                         false,

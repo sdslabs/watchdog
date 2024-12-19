@@ -10,6 +10,7 @@ use lib::init::init;
 use lib::keyhouse::get_name;
 use lib::notifier;
 use lib::utils::clear_file;
+use lib::logger;
 
 pub fn handle_ssh() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -27,6 +28,16 @@ pub fn handle_ssh() -> Result<()> {
                 clear_file("/opt/watchdog/ssh_env")?;
             }
             Ok(ForkResult::Child) => {
+                match fork() {
+                    Ok(ForkResult::Parent { .. }) => {}
+                    Ok(ForkResult::Child) => {
+                        if let Err(e) = logger::log("ssh", "SUCCESS", &format!("User: {}", name)) {
+                            println!("Failed to log: {}", e);
+                        }
+                    }
+                    Err(_) => println!("Fork failed"),
+                }
+
                 notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
             }
             Err(_) => println!("Fork failed"),
