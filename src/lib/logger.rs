@@ -3,15 +3,7 @@ use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::io::Result;
 
-pub fn log(filetype: &str, status: &str, message: &str) -> Result<()> {
-    let filename = match filetype {
-        "ssh" => "/opt/watchdog/custom-logs/ssh.logs",
-        "sudo" => "/opt/watchdog/custom-logs/sudo.logs",
-        "su" => "/opt/watchdog/custom-logs/su.logs",
-        "auth" => "/opt/watchdog/custom-logs/auth.logs",
-        _ => return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid filetype")),
-    };
-
+pub fn log(filepath: &str, status: &str, message: &str) -> Result<()> {
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let timestamp = since_the_epoch.as_secs();
@@ -21,7 +13,7 @@ pub fn log(filetype: &str, status: &str, message: &str) -> Result<()> {
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
-        .open(filename)?;
+        .open(filepath)?;
 
     file.write_all(log_message.as_bytes())?;
     Ok(())

@@ -8,6 +8,8 @@ use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
 use lib::logger;
+use lib::utils::SUDO_LOG_PATH;
+
 pub fn handle_sudo() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
                      .chain_err(|| "PAM_TYPE not set. If you are running this by `watchdog sudo`, please don't. It's an internal command, intended to be used by PAM.")?;
@@ -25,8 +27,7 @@ pub fn handle_sudo() -> Result<()> {
                 match fork() {
                     Ok(ForkResult::Parent { .. }) => {}
                     Ok(ForkResult::Child) => {
-                        // Call the log function in this child process
-                        if let Err(e) = logger::log("sudo", "SUCCESS", &format!("User: {}", pam_ruser)) {
+                        if let Err(e) = logger::log(SUDO_LOG_PATH, "SUCCESS", &format!("User: {}", pam_ruser)) {
                             println!("Failed to log: {}", e);
                         }
                     }

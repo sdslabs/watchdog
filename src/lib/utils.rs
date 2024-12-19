@@ -2,6 +2,11 @@ use std::fs;
 
 use crate::errors::*;
 
+pub const AUTH_LOG_PATH: &str = "/opt/watchdog/custom-logs/auth.logs";
+pub const SSH_LOG_PATH: &str = "/opt/watchdog/custom-logs/ssh.logs";
+pub const SUDO_LOG_PATH: &str = "/opt/watchdog/custom-logs/sudo.logs";
+pub const SU_LOG_PATH: &str = "/opt/watchdog/custom-logs/su.logs";
+
 pub fn clear_file(path: &str) -> Result<()> {
     fs::write(path, "")?;
     Ok(())

@@ -8,6 +8,7 @@ use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
 use lib::logger;
+use lib::utils::SU_LOG_PATH;
 
 pub fn handle_su() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -29,8 +30,7 @@ pub fn handle_su() -> Result<()> {
                 match fork() {
                     Ok(ForkResult::Parent { .. }) => {}
                     Ok(ForkResult::Child) => {
-                        // Call the log function in this child process
-                        if let Err(e) = logger::log("su", "SUCCESS", &format!("User: {}", pam_user)) {
+                        if let Err(e) = logger::log(SU_LOG_PATH, "SUCCESS", &format!("User: {}", pam_user)) {
                             println!("Failed to log: {}", e);
                         }
                     }

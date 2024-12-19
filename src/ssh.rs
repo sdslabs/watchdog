@@ -11,6 +11,7 @@ use lib::keyhouse::get_name;
 use lib::notifier;
 use lib::utils::clear_file;
 use lib::logger;
+use lib::utils::SSH_LOG_PATH;
 
 pub fn handle_ssh() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -31,7 +32,7 @@ pub fn handle_ssh() -> Result<()> {
                 match fork() {
                     Ok(ForkResult::Parent { .. }) => {}
                     Ok(ForkResult::Child) => {
-                        if let Err(e) = logger::log("ssh", "SUCCESS", &format!("User: {}", name)) {
+                        if let Err(e) = logger::log(SSH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
                             println!("Failed to log: {}", e);
                         }
                     }

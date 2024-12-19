@@ -8,6 +8,7 @@ use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
 use lib::notifier;
 use lib::logger;
+use lib::utils::AUTH_LOG_PATH;
 
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
@@ -36,9 +37,10 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                     match fork() {
                         Ok(ForkResult::Parent { .. }) => {}
                         Ok(ForkResult::Child) => {
-                            if let Err(e) = logger::log("auth", "SUCCESS", &format!("User: {}", name)) {
+                            if let Err(e) = logger::log(AUTH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
                                 println!("Failed to log: {}", e);
                             }
+                            std::process::exit(0); 
                         }
                         Err(_) => println!("Fork failed"),
                     }
@@ -49,6 +51,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                         name,
                         ssh_host_username.to_string(),
                     )?;
+                    std::process::exit(0); 
                 }
                 Err(_) => println!("Fork failed"),
             }
