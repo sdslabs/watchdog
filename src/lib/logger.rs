@@ -5,9 +5,10 @@ use std::io::Result;
 
 pub fn log(filetype: &str, status: &str, message: &str) -> Result<()> {
     let filename = match filetype {
-        "ssh" => "ssh.logs",
-        "sudo" => "sudo.logs",
-        "su" => "su.logs",
+        "ssh" => "/opt/watchdog/custom-logs/ssh.logs",
+        "sudo" => "/opt/watchdog/custom-logs/sudo.logs",
+        "su" => "/opt/watchdog/custom-logs/su.logs",
+        "auth" => "/opt/watchdog/custom-logs/auth.logs",
         _ => return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid filetype")),
     };
 
