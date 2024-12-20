@@ -30,21 +30,12 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
 
         Ok(false) => {
             let name = get_name(&config, ssh_key)?;
-
+            if let Err(e) = logger::log(AUTH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
+                println!("Failed to log: {}", e);
+            }
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
-                    match fork() {
-                        Ok(ForkResult::Parent { .. }) => {}
-                        Ok(ForkResult::Child) => {
-                            if let Err(e) = logger::log(AUTH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
-                                println!("Failed to log: {}", e);
-                            }
-                            std::process::exit(0); 
-                        }
-                        Err(_) => println!("Fork failed"),
-                    }
-
                     notifier::post_ssh_summary(
                         &config,
                         false,

@@ -9,7 +9,7 @@ use lib::errors::*;
 use lib::init::init;
 use lib::keyhouse::get_name;
 use lib::notifier;
-use lib::utils::clear_file;
+//use lib::utils::clear_file;
 use lib::logger;
 use lib::utils::SSH_LOG_PATH;
 
@@ -23,22 +23,12 @@ pub fn handle_ssh() -> Result<()> {
 
         let env = read_temp_env("/opt/watchdog/ssh_env")?;
         let name = get_name(&config, &env.ssh_key)?;
-
+        if let Err(e) = logger::log(SSH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
+            println!("Failed to log: {}", e);
+        }
         match fork() {
-            Ok(ForkResult::Parent { .. }) => {
-                clear_file("/opt/watchdog/ssh_env")?;
-            }
+            Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
-                match fork() {
-                    Ok(ForkResult::Parent { .. }) => {}
-                    Ok(ForkResult::Child) => {
-                        if let Err(e) = logger::log(SSH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
-                            println!("Failed to log: {}", e);
-                        }
-                    }
-                    Err(_) => println!("Fork failed"),
-                }
-
                 notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
             }
             Err(_) => println!("Fork failed"),

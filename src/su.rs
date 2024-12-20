@@ -23,20 +23,12 @@ pub fn handle_su() -> Result<()> {
     if pam_type == "open_session" {
         let config = read_config()?;
         init(&config)?;
-
+        if let Err(e) = logger::log(SU_LOG_PATH, "SUCCESS", &format!("User: {}", pam_user)) {
+            println!("Failed to log: {}", e);
+        }
         match fork() {
             Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
-                match fork() {
-                    Ok(ForkResult::Parent { .. }) => {}
-                    Ok(ForkResult::Child) => {
-                        if let Err(e) = logger::log(SU_LOG_PATH, "SUCCESS", &format!("User: {}", pam_user)) {
-                            println!("Failed to log: {}", e);
-                        }
-                    }
-                    Err(_) => println!("Fork failed"),
-                }
-
                 notifier::post_su_summary(&config, pam_ruser, pam_user)?;
             }
             Err(_) => println!("Fork failed"),
