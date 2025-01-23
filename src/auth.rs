@@ -22,8 +22,9 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                 "ssh_key = '{}'\n",
                 ssh_key
             );
-            //file name is ssh_host_username_pam_tty
-            let file_name = ssh_host_username.to_string() + "_" + &pam_tty; //might cause problems due to String and &str
+
+            //file name is pam_tty
+            let file_name = pam_tty.replace("/", "_");
             fs::write("/opt/watchdog/ssh_env/file_name", data)
                         .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
 

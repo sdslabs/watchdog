@@ -25,7 +25,7 @@ pub fn handle_ssh() -> Result<()> {
         let config = read_config()?;
         init(&config)?;
         
-        let file_name = pam_ruser.to_string() + "_" + &pam_tty; //might cause problems due to String and &str
+        let file_name = pam_tty.replace("/", "_"); //dev_pts_0
 
         let env = read_temp_env("/opt/watchdog/ssh_env/file_name")?; //read appropriate env file
         let name = get_name(&config, &env.ssh_key)?;
