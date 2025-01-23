@@ -16,6 +16,9 @@ clap = "2.19"
 error-chain="0.12.1"
 toml_edit="0.1.5"
 nix = "0.9.0"
+openssl = "0.10"
+openssl-sys = "0.9.58"
+chrono = "0.4"
 
 [[ bin ]]
 name = "watchdog"
