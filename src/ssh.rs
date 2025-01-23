@@ -27,12 +27,14 @@ pub fn handle_ssh() -> Result<()> {
         
         let file_name = pam_tty.replace("/", "_"); //dev_pts_0
 
-        let env = read_temp_env("/opt/watchdog/ssh_env/file_name")?; //read appropriate env file
+        let path = format!("/opt/watchdog/ssh_env/{}", file_name);
+
+        let env = read_temp_env(&path)?; //read appropriate env file
         let name = get_name(&config, &env.ssh_key)?;
 
         match fork() {
             Ok(ForkResult::Parent { .. }) => {
-                clear_file("/opt/watchdog/ssh_env/file_name")?;
+                clear_file(&path)?;
             }
             Ok(ForkResult::Child) => {
                 notifier::post_ssh_summary(&config, true, name, pam_ruser)?;
