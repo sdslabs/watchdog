@@ -15,19 +15,27 @@ pub fn handle_ssh() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
                     .chain_err(|| "PAM_TYPE not set. If you are running this by `watchdog ssh`, please don't. It's an internal command, intended to be used by PAM.")?;
 
+    let pam_tty = env::var("PAM_TTY") //gives terminal session
+                    .chain_err(|| "PAM_TTY not set. If you are running this by `watchdog ssh`, please don't. It's an internal command, intended to be used by PAM.")?;
+
+    let pam_ruser = env::var("PAM_RUSER") //gives ssh_host_username
+                    .chain_err(|| "PAM_RUSER not set. If you are running this by `watchdog ssh`, please don't. It's an internal command, intended to be used by PAM.")?;
+
     if pam_type == "open_session" {
         let config = read_config()?;
         init(&config)?;
+        
+        let file_name = pam_ruser.to_string() + "_" + &pam_tty; //might cause problems due to String and &str
 
-        let env = read_temp_env("/opt/watchdog/ssh_env")?;
+        let env = read_temp_env("/opt/watchdog/ssh_env/file_name")?; //read appropriate env file
         let name = get_name(&config, &env.ssh_key)?;
 
         match fork() {
             Ok(ForkResult::Parent { .. }) => {
-                clear_file("/opt/watchdog/ssh_env")?;
+                clear_file("/opt/watchdog/ssh_env/file_name")?;
             }
             Ok(ForkResult::Child) => {
-                notifier::post_ssh_summary(&config, true, name, env.ssh_host_username)?;
+                notifier::post_ssh_summary(&config, true, name, pam_ruser)?;
             }
             Err(_) => println!("Fork failed"),
         }
