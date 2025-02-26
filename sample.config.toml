@@ -22,3 +22,7 @@ token = 'secret_token'
 # app(https://slack.com/apps/A0F7XDUAZ-incoming-webhooks)
 # and paste the hook URL here. You can customize the icon and name as you like.
 slack = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
+
+# Logging
+[logging]
+debug=true

@@ -17,10 +17,16 @@ pub struct NotifiersConf {
 }
 
 #[derive(Deserialize, Clone)]
+pub struct LoggingConf {
+    pub debug: bool,
+}
+
+#[derive(Deserialize, Clone)]
 pub struct Config {
     pub hostname: String,
     pub keyhouse: KeyhouseConf,
     pub notifiers: NotifiersConf,
+    pub logging: LoggingConf,
 }
 
 pub fn read_config() -> Result<Config> {
@@ -47,6 +53,9 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "notifiers.slack" => {
             doc["notifiers"]["slack"] = value(val);
         }
+        "logging.debug" => {
+            doc["logging"]["debug"] = value(val);
+        }
         _ => {
             return Err("Invalid Key passed".into());
         }
@@ -65,6 +74,7 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "keyhouse.base_url" => doc["keyhouse"]["base_url"].as_str(),
         "keyhouse.token" => doc["keyhouse"]["token"].as_str(),
         "notifiers.slack" => doc["notifiers"]["slack"].as_str(),
+        "logging.debug" => doc["logging"]["debug"].as_str(),
         _ => {
             return Err("Invalid Key passed".into());
         }

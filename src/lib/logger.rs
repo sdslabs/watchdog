@@ -3,6 +3,7 @@ use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::io::Result;
 use chrono::{DateTime, Utc};
+use crate::config::{read_config, Config};
 
 pub fn log(filepath: &str, status: &str, message: &str) -> Result<()> {
     let start = SystemTime::now();
@@ -22,6 +23,18 @@ pub fn log(filepath: &str, status: &str, message: &str) -> Result<()> {
 }
 
 pub fn logln(message: &str) {
+    let config = match read_config(){
+        Ok(config) => config,
+        Err(_) => {
+            log("/opt/watchdog/custom-logs/watchdog.logs", "FAILURE", "Failed to read config").expect("Failed to log");
+            return;
+        },
+    };
+    let debug=get_debug(&config);   
+    if debug==false {
+        log("/opt/watchdog/custom-logs/watchdog.logs", "FAILURE", "debug false in logln").expect("Failed to log");
+        return;
+    }
     let start = SystemTime::now();
     let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
     let timestamp = since_the_epoch.as_secs();
@@ -35,6 +48,9 @@ pub fn logln(message: &str) {
         .create(true)
         .open(filepath).expect("Failed to open log file");
 
-
         file.write_all(log_message.as_bytes()).expect("Failed to write to log file");
-    }
+}
+
+pub fn get_debug(config: &Config) -> bool {
+    config.logging.debug
+}
