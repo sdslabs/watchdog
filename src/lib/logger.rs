@@ -4,6 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::io::Result;
 use chrono::{DateTime, Utc};
 use crate::config::{read_config, Config};
+use crate::utils::parse_offset;
 
 pub fn log(filepath: &str, status: &str, message: &str) -> Result<()> {
     let start = SystemTime::now();
@@ -35,11 +36,11 @@ pub fn logln(message: &str) {
         log("/opt/watchdog/custom-logs/watchdog.logs", "FAILURE", "debug false in logln").expect("Failed to log");
         return;
     }
-    let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    let timestamp = since_the_epoch.as_secs();
-    let datetime = DateTime::<Utc>::from(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(timestamp));
-    let readable_time = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+    let offset = parse_offset(&config.logging.offset).expect("Invalid time offset format");
+    let now_utc: DateTime<Utc> = Utc::now();
+    let local_time = now_utc.with_timezone(&offset);
+
+    let readable_time = local_time.format("%Y-%m-%d %H:%M:%S").to_string();
     let log_message = format!("{} - {}\n", readable_time, message);
 
     let filepath = "/opt/watchdog/custom-logs/watchdog.logs";

@@ -9,7 +9,7 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 
 use crate::config::Config;
-use crate::errors::*;
+use crate::{errors::*, logger};
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let mut hasher = Sha256::new();
@@ -85,6 +85,61 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
                 return get_content_from_github_json(&json_text);
             } else {
                 return Ok(String::from("UNKNOWN"));
+            }
+        }
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
+    }
+}
+
+pub fn fetch_github_projects(config: &Config, user: &str) -> Result<Vec<String>> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
+    let res = client
+        .get(&format!(
+            "{}/data/hosts/{}?ref=master",
+            config.keyhouse.base_url, user
+        ))
+        .header(
+            "Authorization",
+            &format!("Bearer {}", config.keyhouse.token),
+        )
+        .send();
+    match res {
+        Ok(mut r) => {
+            if r.status().is_success() {
+                let json_text = r.text()?;
+                let json: serde_json::Value = serde_json::from_str(&json_text)
+                    .map_err(|e| {
+                        logger::logln(&format!("Failed to parse JSON from GitHub: {}", e));
+                        e
+                    })
+                    .chain_err(|| "Invalid JSON received from GitHub.")?;
+
+                let encoded_content = json["content"]
+                    .as_str()
+                    .ok_or_else(|| Error::from("Missing 'content' field in JSON."))?;
+                let content = base64::decode(encoded_content.trim_end())
+                    .chain_err(|| "Base64 decoding failed.")?;
+                let decoded_str =
+                    String::from_utf8(content).chain_err(|| "UTF-8 decoding failed.")?;
+                logger::logln(&format!("Decoded string: {}", decoded_str));
+                let projects = decoded_str
+                    .lines()
+                    .filter_map(|line| line.split('|').nth(1))
+                    .map(String::from)
+                    .collect::<Vec<String>>();
+                logger::logln(&format!("Projects: {:?}", projects));
+                Ok(projects)
+            } else {
+                logger::logln(&format!(
+                    "GitHub API request failed with status: {}",
+                    r.status()
+                ));
+                Err(Error::from(format!(
+                    "GitHub API request failed with status: {}",
+                    r.status()
+                )))
             }
         }
         Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),

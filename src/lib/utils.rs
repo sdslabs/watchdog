@@ -1,6 +1,6 @@
-use std::fs;
-
-use crate::errors::*;
+use std::{fs, process::Command};
+use chrono::{DateTime, FixedOffset, Utc};
+use crate::{errors::*, logger};
 
 pub const AUTH_LOG_PATH: &str = "/opt/watchdog/custom-logs/auth.logs";
 pub const SSH_LOG_PATH: &str = "/opt/watchdog/custom-logs/ssh.logs";
@@ -12,10 +12,51 @@ pub fn clear_file(path: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
+    for group in groups {
+        if group != user {
+            Command::new("usermod")
+                .arg("-aG")
+                .arg(group)
+                .arg(user)
+                .output()
+                .chain_err(|| format!("Failed to add user {} to group {}", user, group))?;
+            logger::logln(&format!("User {} added to group {}", user, group));
+         }
+    }
+    Ok(())
+}
+
+pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {
+    let sign = if offset_str.starts_with('+') { 1 } else { -1 };
+    let parts: Vec<&str> = offset_str.trim_start_matches(&['+', '-'][..]).split(':').collect();
+
+    if parts.len() != 2 {
+        return Err("Invalid offset format".into());
+    }
+
+    let hours: i32 = parts[0].parse().map_err(|_| "Invalid hour format")?;
+    let minutes: i32 = parts[1].parse().map_err(|_| "Invalid minute format")?;
+
+    let total_offset = sign * (hours * 3600 + minutes * 60);
+    let offset=FixedOffset::east_opt(total_offset).chain_err(|| "Invalid offset");
+    let now_utc: DateTime<Utc> = Utc::now();
+    let offset_value = offset.unwrap();
+    let local_time = now_utc.with_timezone(&offset_value);
+
+    let readable_time = local_time.format("%Y-%m-%d %H:%M:%S").to_string();
+    let log_message = format!("{} - {}\n", readable_time, "logging here in parse_offset_test");
+    logger::logln(&log_message);
+    Ok(offset_value)
+}
+
+
 #[cfg(test)]
 mod tests {
+    
+
     use super::*;
-    use std::env;
+    use std::{env, fs};
 
     #[test]
     fn clear_file_test() -> Result<()> {
@@ -29,6 +70,17 @@ mod tests {
 
         let content = fs::read_to_string(s)?;
         assert_eq!(content, "");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_offset_test() -> Result<()> {
+        let offset_str = "+05:30";
+        let offset = parse_offset(offset_str)?;
+        assert_eq!(offset, FixedOffset::east(19800));
+        let offset_str = "-05:30";
+        let offset = parse_offset(offset_str)?;
+        assert_eq!(offset, FixedOffset::west(19800));
         Ok(())
     }
 }

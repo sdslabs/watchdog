@@ -63,13 +63,13 @@ pub fn post_su_summary(conf: &Config, from: String, to: String) -> Result<()> {
 pub fn post_ssh_summary(
     conf: &Config,
     success: bool,
-    user: String,
-    pam_ruser: String,
+    user: &String,
+    pam_ruser: &String,
 ) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        let user_copy = String::from(&user);
-        let pam_ruser_copy = String::from(&pam_ruser);
+        let user_copy = String::from(user);
+        let pam_ruser_copy = String::from(pam_ruser);
         notif.post_ssh_summary(conf, success, user_copy, pam_ruser_copy)?;
     }
     Ok(())
@@ -142,7 +142,7 @@ impl Notifier for Slack {
     }
 
     fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
-        let text = format!("sudo attempted on {}@{}", pam_ruser, conf.hostname);
+        let text = format!("{} attempted sudo on {}", pam_ruser, conf.hostname);
         let json = Slack::create_json(&text, "#36a64f")?;
         self.make_request(json)
             .chain_err(|| "Couldn't post sudo summary to Slack")?;

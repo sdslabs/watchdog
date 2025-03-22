@@ -1,5 +1,3 @@
-use std::fs;
-
 use nix::unistd::{fork, ForkResult};
 
 use lib::config::read_config;
@@ -16,21 +14,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     logger::logln(&format!("ssh_key in handle_auth: {}", ssh_key));
     match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
-            logger::logln("User validated");
-            let data = format!(
-                "ssh_host_username = '{}'\nssh_key = '{}'\n",
-                ssh_host_username, ssh_key
-            );
-
-            fs::write("/opt/watchdog/ssh_env", data)
-                        .chain_err(|| "Cannot write temporary environment file. Please check if the watchdog `auth_keys_cmd` is run by the root user")?;
-            logger::logln("Temporary environment file written");
-            println!("{}", ssh_key);
-            let name = get_name(&config, ssh_key)?;
-            if let Err(e) = logger::log(AUTH_LOG_PATH, "SUCCESS", &format!("User: {}", name)) {
-                println!("Failed to log: {}", e);
-            }
-            logger::logln("Logging successful");
+            logger::logln("User validated by handle auth");
             Ok(())
         }
 
@@ -47,8 +31,8 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                     notifier::post_ssh_summary(
                         &config,
                         false,
-                        name,
-                        ssh_host_username.to_string(),
+                        &name,
+                        &ssh_host_username.to_string(),
                     )?;
                     std::process::exit(0); 
                 }
