@@ -4,7 +4,7 @@ mod auth;
 mod ssh;
 mod su;
 mod sudo;
-
+mod update;
 use std::process::Command;
 
 use clap::{App, AppSettings, Arg, SubCommand};
@@ -16,6 +16,7 @@ use auth::handle_auth;
 use ssh::{handle_ssh, handle_ssh_logs};
 use su::{handle_su, handle_su_logs};
 use sudo::{handle_sudo, handle_sudo_logs};
+use update::handle_update;
 
 fn make_app<'a, 'b>() -> App<'a, 'b> {
     App::new("Watchdog")
@@ -65,6 +66,8 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             .arg(Arg::with_name("value")
                  .index(2)
                  .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
+        .subcommand(SubCommand::with_name("update"))
+            .about("Update users and groups from Keyhouse")
 }
 
 fn print_traceback(e: Error) {
@@ -151,7 +154,14 @@ fn main() {
                 }
             }
         };
-    } else {
+    } else if let Some(ref _matches)= matches.subcommand_matches("update") {
+        if let Err(e) = handle_update() {
+            println!("watchdog-update error: {}", e);
+            print_traceback(e);
+            std::process::exit(1);
+        }
+    }
+    else {
         println!("No command passed");
         std::process::exit(1);
     }

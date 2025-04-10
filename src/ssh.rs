@@ -1,8 +1,6 @@
 use std::env;
 use std::process::Command;
 
-use lib::keyhouse::fetch_github_projects;
-use lib::utils::add_user_to_groups;
 use nix::unistd::{fork, ForkResult};
 
 use lib::config::read_config;
@@ -36,22 +34,6 @@ pub fn handle_ssh() -> Result<()> {
             Err(_) => println!("Fork failed"),
         }
 
-        let mut projects = fetch_github_projects(&config, &pam_ruser)?;
-
-        logger::logln(&format!("Fetched projects: {:?}", projects));
-
-        projects.retain(|p| p != &config.hostname);
-
-        logger::logln(&format!("Filtered projects (excluding self): {:?}", projects));
-
-        match add_user_to_groups(&pam_ruser, &projects) {
-            Ok(_) => {}
-            Err(e) => {
-                logger::logln(&format!("Failed to add user to project groups: {}", e));
-            }
-        }
-
-        logger::logln("User successfully added to project groups.");
     }
     Ok(())
 }

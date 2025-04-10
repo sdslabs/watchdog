@@ -7,6 +7,8 @@ use std::time::Duration;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use reqwest::Client;
+use serde_json::Value;
 
 use crate::config::Config;
 use crate::{errors::*, logger};
@@ -144,4 +146,43 @@ pub fn fetch_github_projects(config: &Config, user: &str) -> Result<Vec<String>>
         }
         Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
     }
+}
+
+pub fn fetch_file_names(
+    base_url: &str,
+    directory: &str,
+    token: &str,
+    file_names: &mut Vec<String>,
+) -> Result<()> {
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()?;
+    println!(
+        "Fetching file names from {}/{}?ref=master and token {}",
+        base_url, directory, token
+    );
+    let mut response = client
+        .get(&format!("{}/{}?ref=master", base_url, directory))
+        .header("Authorization", &format!("Bearer {}", token))
+        .send()?;
+    
+    if response.status().is_success() {
+        let contents: Value = response.json()?;
+        if let Some(files) = contents.as_array() {
+            for file in files {
+                if let Some(file_name) = file["name"].as_str() {
+                    file_names.push(file_name.to_string());
+                }
+            }
+        }
+    } else {
+        return Err(format!(
+            "GitHub API request failed with status: {}",
+            response.status()
+        )
+        .into());
+    }
+
+    println!("Fetched file names: {:?}", file_names);
+    Ok(())
 }

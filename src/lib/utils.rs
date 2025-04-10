@@ -1,5 +1,5 @@
 use std::{fs, process::Command};
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::FixedOffset;
 use crate::{errors::*, logger};
 
 pub const AUTH_LOG_PATH: &str = "/opt/watchdog/custom-logs/auth.logs";
@@ -40,13 +40,7 @@ pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {
 
     let total_offset = sign * (hours * 3600 + minutes * 60);
     let offset=FixedOffset::east_opt(total_offset).chain_err(|| "Invalid offset");
-    let now_utc: DateTime<Utc> = Utc::now();
     let offset_value = offset.unwrap();
-    let local_time = now_utc.with_timezone(&offset_value);
-
-    let readable_time = local_time.format("%Y-%m-%d %H:%M:%S").to_string();
-    let log_message = format!("{} - {}\n", readable_time, "logging here in parse_offset_test");
-    logger::logln(&log_message);
     Ok(offset_value)
 }
 

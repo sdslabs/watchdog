@@ -15,6 +15,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
             logger::logln("User validated by handle auth");
+            println!("{}", ssh_key);
             Ok(())
         }
 
