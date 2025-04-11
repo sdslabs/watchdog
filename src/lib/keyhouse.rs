@@ -14,6 +14,12 @@ use crate::config::Config;
 use crate::{errors::*, logger};
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
+    let name = get_name(&config, ssh_key)?;
+    logger::logln(&format!("User name: {}", name));
+    if name != user {
+        return Ok(false);
+    }
+    
     let mut hasher = Sha256::new();
 
     hasher.input_str(&ssh_key);
