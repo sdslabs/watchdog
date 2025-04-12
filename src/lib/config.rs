@@ -18,7 +18,7 @@ pub struct NotifiersConf {
 
 #[derive(Deserialize, Clone)]
 pub struct LoggingConf {
-    pub debug: bool,
+    pub debug: String,
     pub offset: String,
 }
 

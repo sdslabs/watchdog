@@ -31,8 +31,7 @@ pub fn logln(message: &str) {
             return;
         },
     };
-    let debug=get_debug(&config);   
-    if debug==false {
+    if &config.logging.debug=="false" {
         log("/opt/watchdog/custom-logs/watchdog.logs", "FAILURE", "debug false in logln").expect("Failed to log");
         return;
     }
@@ -52,6 +51,3 @@ pub fn logln(message: &str) {
         file.write_all(log_message.as_bytes()).expect("Failed to write to log file");
 }
 
-pub fn get_debug(config: &Config) -> bool {
-    config.logging.debug
-}

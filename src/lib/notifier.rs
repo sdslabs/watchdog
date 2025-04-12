@@ -32,7 +32,7 @@ pub trait Notifier {
         conf: &Config,
         success: bool,
         user: String,
-        pam_ruser: String,
+        pam_user: String,
     ) -> Result<()>;
 }
 
@@ -64,13 +64,13 @@ pub fn post_ssh_summary(
     conf: &Config,
     success: bool,
     user: &String,
-    pam_ruser: &String,
+    pam_user: &String,
 ) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
         let user_copy = String::from(user);
-        let pam_ruser_copy = String::from(pam_ruser);
-        notif.post_ssh_summary(conf, success, user_copy, pam_ruser_copy)?;
+        let pam_user_copy = String::from(pam_user);
+        notif.post_ssh_summary(conf, success, user_copy, pam_user_copy)?;
     }
     Ok(())
 }
@@ -162,17 +162,17 @@ impl Notifier for Slack {
         conf: &Config,
         success: bool,
         user: String,
-        pam_ruser: String,
+        pam_user: String,
     ) -> Result<()> {
         let color: &str;
         let text: String;
         if success {
-            text = format!("{} logged in on {}@{}", user, pam_ruser, conf.hostname);
+            text = format!("{} logged in on {}@{}", user, pam_user, conf.hostname);
             color = "#36a64f";
         } else {
             text = format!(
                 "{} tried to log in on {}@{}",
-                user, pam_ruser, conf.hostname
+                user, pam_user, conf.hostname
             );
             color = "#f29513";
         }

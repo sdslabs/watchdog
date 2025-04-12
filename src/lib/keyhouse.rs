@@ -15,10 +15,12 @@ use crate::{errors::*, logger};
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let name = get_name(&config, ssh_key)?;
-    logger::logln(&format!("User name: {}", name));
-    if name != user {
+    logger::logln(&format!("User name: {} ,user {}", name,user));
+    if name.trim() != user.trim() {
+        logger::logln("User didnt match with name");
         return Ok(false);
     }
+    logger::logln("User match with name");
     
     let mut hasher = Sha256::new();
 
