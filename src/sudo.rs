@@ -11,6 +11,7 @@ use lib::logger;
 use lib::utils::SUDO_LOG_PATH;
 
 pub fn handle_sudo() -> Result<()> {
+    logger::logln("Handling sudo command");
     let pam_type = env::var("PAM_TYPE")
                      .chain_err(|| "PAM_TYPE not set. If you are running this by `watchdog sudo`, please don't. It's an internal command, intended to be used by PAM.")?;
 
@@ -28,7 +29,13 @@ pub fn handle_sudo() -> Result<()> {
         match fork() {
             Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
-                notifier::post_sudo_summary(&config, pam_ruser)?;
+                let pwd = env::var("PWD").unwrap_or_else(|_| {
+                    std::env::current_dir()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|_| "<unknown>".to_string())
+                });
+                logger::logln(&format!("PWD: {}", pwd));
+                notifier::post_sudo_summary(&config, pam_ruser,pwd)?;
             }
             Err(_) => println!("Fork failed"),
         }

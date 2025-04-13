@@ -13,7 +13,8 @@ pub struct KeyhouseConf {
 
 #[derive(Deserialize, Clone)]
 pub struct NotifiersConf {
-    pub slack: String,
+    pub token: String,
+    pub channel: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -51,8 +52,11 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "keyhouse.token" => {
             doc["keyhouse"]["token"] = value(val);
         }
-        "notifiers.slack" => {
-            doc["notifiers"]["slack"] = value(val);
+        "notifiers.token" => {
+            doc["notifiers"]["token"] = value(val);
+        }
+        "notifiers.channel" => {
+            doc["notifiers"]["channel"] = value(val);
         }
         "logging.debug" => {
             doc["logging"]["debug"] = value(val);
@@ -77,7 +81,8 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "hostname" => doc["hostname"].as_str(),
         "keyhouse.base_url" => doc["keyhouse"]["base_url"].as_str(),
         "keyhouse.token" => doc["keyhouse"]["token"].as_str(),
-        "notifiers.slack" => doc["notifiers"]["slack"].as_str(),
+        "notifiers.token" => doc["notifiers"]["token"].as_str(),
+        "notifiers.channel" => doc["notifiers"]["channel"].as_str(),
         "logging.debug" => doc["logging"]["debug"].as_str(),
         "logging.offset" => doc["logging"]["offset"].as_str(),
         _ => {
