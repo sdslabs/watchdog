@@ -1,6 +1,5 @@
 extern crate base64;
 extern crate crypto;
-extern crate reqwest;
 extern crate serde_json;
 
 use std::time::Duration;
@@ -8,49 +7,86 @@ use std::time::Duration;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use reqwest::Client;
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::config::Config;
 use crate::{errors::*, logger};
 
+#[derive(Debug, Deserialize)]
+struct NameFile {
+    name: String,
+}
+
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let name = get_name(&config, ssh_key)?;
-    logger::logln(&format!("User name: {} ,user {}", name,user));
+    logger::logln(&format!("User name: {} ,user {}", name, user));
     if name.trim() != user.trim() {
-        logger::logln("User didnt match with name");
+        logger::logln("User didn't match with name");
         return Ok(false);
     }
     logger::logln("User match with name");
-    
-    let mut hasher = Sha256::new();
 
+    let mut hasher = Sha256::new();
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
+    let host = &config.hostname;
+
+    logger::logln(&format!("Found user hash {}", hex));
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
-    let res = client
-        .get(&format!(
-            "{}/access/{}/{}/{}?ref=build",
-            config.keyhouse.base_url, config.hostname, user, hex
-        ))
-        .header(
-            "Authorization",
-            &format!("Bearer {}", config.keyhouse.token),
-        )
-        .send();
 
-    match res {
-        Ok(r) => {
-            if r.status().is_success() {
-                return Ok(true);
-            } else {
-                return Ok(false);
-            }
+    logger::logln(&format!("user {},host {}", user, host));
+
+    let host_url = format!("{}/access/{}?ref=build", config.keyhouse.base_url, host);
+    logger::logln(&format!("Host URL: {}", host_url));
+    let name_files: Vec<NameFile> = match client
+        .get(&host_url)
+        .header("Authorization", format!("Bearer {}", config.keyhouse.token))
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+    {
+        Ok(mut r) if r.status().is_success() => {
+            let text = r.text()?;
+            logger::logln(&format!("Response: {:?}", text));
+            serde_json::from_str(&text).unwrap_or_default()
         }
-        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
+        Ok(r) => {
+            logger::logln(&format!("Failed to fetch names: {}", r.status()));
+            vec![]
+        }
+        Err(e) => {
+            logger::logln(&format!("Error fetching names: {:?}", e));
+            vec![]
+        }
+    };
+    let projects: Vec<String> = name_files.into_iter().map(|f| f.name).collect();
+
+    logger::logln(&format!("Found projects: {:?} for host {}", projects, host));
+    for project in &projects {
+        let project_url = format!(
+            "{}/access/{}/{}/{}?ref=build",
+            config.keyhouse.base_url, host, project, hex
+        );
+
+        match client
+            .get(&project_url)
+            .header("Authorization", format!("Bearer {}", config.keyhouse.token))
+            .send()
+        {
+            Ok(mut resp) if resp.status().is_success() => {
+                let text = resp.text()?;
+                logger::logln(&format!("Response: {:?}", text));
+                logger::logln("User validated");
+                return Ok(true);
+            }
+            Ok(_) | Err(_) => continue,
+        }
     }
+
+    Ok(false)
 }
 
 fn get_content_from_github_json(json_text: &str) -> Result<String> {
@@ -173,7 +209,7 @@ pub fn fetch_file_names(
         .get(&format!("{}/{}?ref=master", base_url, directory))
         .header("Authorization", &format!("Bearer {}", token))
         .send()?;
-    
+
     if response.status().is_success() {
         let contents: Value = response.json()?;
         if let Some(files) = contents.as_array() {
