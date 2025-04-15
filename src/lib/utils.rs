@@ -27,6 +27,17 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     Ok(())
 }
 
+pub fn create_linux_user(username: &str) -> Result<()> {
+    Command::new("useradd")
+        .arg("--no-create-home")
+        .arg("--system")
+        .arg(username)
+        .status()
+        .chain_err(|| format!("Failed to add user {}", username))?;
+        info!(target: "update", "User {} added", username);
+    Ok(())
+}
+
 pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {
     let sign = if offset_str.starts_with('+') { 1 } else { -1 };
     let parts: Vec<&str> = offset_str
