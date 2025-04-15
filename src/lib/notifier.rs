@@ -1,12 +1,12 @@
 extern crate reqwest;
 extern crate serde_json;
 
+use crate::config::Config;
+use crate::errors::*;
+use log::info;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
 use serde_json::json;
-
-use crate::config::Config;
-use crate::{errors::*, logger};
 
 /// Notifier is an abstract trait to post messages to webhook
 ///
@@ -18,7 +18,7 @@ pub trait Notifier {
     where
         Self: Sized;
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String,pwd:String) -> Result<()>;
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String, pwd: String) -> Result<()>;
     /// Post summary for su attempts
     fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()>;
     /// Post summary for ssh attempts
@@ -34,10 +34,10 @@ pub trait Notifier {
 struct GlobalNotifier(Vec<Box<dyn Notifier>>);
 
 /// Post summary for sudo attempts
-pub fn post_sudo_summary(conf: &Config, pam_ruser: String,pwd:String) -> Result<()> {
+pub fn post_sudo_summary(conf: &Config, pam_ruser: String, pwd: String) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        notif.post_sudo_summary(conf, pam_ruser.clone(),pwd.clone())?
+        notif.post_sudo_summary(conf, pam_ruser.clone(), pwd.clone())?
     }
     Ok(())
 }
@@ -90,7 +90,7 @@ impl Slack {
         if let Some(ts) = thread_ts {
             payload["thread_ts"] = json!(ts);
         }
-            logger::logln(&format!("Slack payload: {:?}", payload));
+        info!(target: "watchdog", "Slack payload: {:?}", payload);
         let mut res = self
             .client
             .post("https://slack.com/api/chat.postMessage")
@@ -120,7 +120,7 @@ impl Slack {
             .query(&[("channel", &self.channel), ("limit", &"1".to_string())])
             .send()
             .chain_err(|| "Failed to fetch message history")?;
-        logger::logln(&format!("Slack response: {:?}", res));
+        info!(target: "watchdog", "Slack response: {:?}", res);
         let body: serde_json::Value = res.json().chain_err(|| "Invalid JSON from Slack")?;
         if !body["ok"].as_bool().unwrap_or(false) {
             return Err(format!(
@@ -129,13 +129,13 @@ impl Slack {
             )
             .into());
         }
-        logger::logln(&format!("Slack body: {:?}", body));
+        info!(target: "watchdog", "Slack body: {:?}", body);
         let ts = body["messages"]
             .as_array()
             .and_then(|arr| arr.first())
             .and_then(|msg| msg["ts"].as_str())
             .ok_or("No messages found in channel")?;
-        logger::logln(&format!("Slack timestamp: {:?}", ts));
+        info!(target: "watchdog", "Slack timestamp: {:?}", ts);
         Ok(ts.to_string())
     }
 }
@@ -156,14 +156,14 @@ impl Notifier for Slack {
         })
     }
 
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String,pwd:String) -> Result<()> {          
+    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String, pwd: String) -> Result<()> {
         let parent_text = format!("{} attempted sudo on {}", pam_ruser, conf.hostname);
         self.post_message(&parent_text, None)?;
-        logger::logln(&format!("Posted parent message: {:?}", parent_text));
+        info!(target: "watchdog", "Posted parent message: {:?}", parent_text);
 
         let thread_ts = self.fetch_latest_ts()?;
-        logger::logln(&format!("Fetched thread timestamp: {:?}", thread_ts));
-        
+        info!(target: "watchdog", "Fetched thread timestamp: {:?}", thread_ts);
+
         let pwd_text = format!("Attempted in :{} ", pwd);
         self.post_message(&pwd_text, Some(&thread_ts))?;
 

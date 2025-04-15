@@ -1,14 +1,13 @@
 use std::env;
 use std::process::Command;
 
+use log::{info, error};
 use nix::unistd::{fork, ForkResult};
 
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
-use lib::logger;
-use lib::utils::SU_LOG_PATH;
 
 pub fn handle_su() -> Result<()> {
     let pam_type = env::var("PAM_TYPE")
@@ -19,19 +18,18 @@ pub fn handle_su() -> Result<()> {
 
     let pam_user = env::var("PAM_USER")
                      .chain_err(|| "PAM_USER not set. If you are running this by `watchdog su`, please don't. It's an internal command, intended to be used by PAM.")?;
-
+    info!(target: "su", "PAM_RUSER: {}", pam_ruser);
+    info!(target: "su", "PAM_USER: {}", pam_user);
+    info!(target: "su", "PAM_TYPE: {}", pam_type);
     if pam_type == "open_session" {
         let config = read_config()?;
         init(&config)?;
-        if let Err(e) = logger::log(SU_LOG_PATH, "SUCCESS", &format!("User: {}", pam_user)) {
-            println!("Failed to log: {}", e);
-        }
         match fork() {
             Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
                 notifier::post_su_summary(&config, pam_ruser, pam_user)?;
             }
-            Err(_) => println!("Fork failed"),
+            Err(_) => error!("Fork failed"),
         }
     }
     Ok(())

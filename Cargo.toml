@@ -19,6 +19,9 @@ nix = "0.9.0"
 openssl = "0.10"
 openssl-sys = "0.9.58"
 chrono = "0.4"
+log = "0.4"
+fern = "0.6"
+lazy_static = "1.5.0"
 
 [[ bin ]]
 name = "watchdog"

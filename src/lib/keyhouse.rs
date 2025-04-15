@@ -6,12 +6,13 @@ use std::time::Duration;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use log::info;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::config::Config;
-use crate::{errors::*, logger};
+use crate::errors::*;
 
 #[derive(Debug, Deserialize)]
 struct NameFile {
@@ -20,28 +21,28 @@ struct NameFile {
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let name = get_name(&config, ssh_key)?;
-    logger::logln(&format!("User name: {} ,user {}", name, user));
+    info!(target: "auth", "User name: {} ,user {}", name, user);
     if name.trim() != user.trim() {
-        logger::logln("User didn't match with name");
+        info!(target: "auth", "User didn't match with name");
         return Ok(false);
     }
-    logger::logln("User match with name");
+    info!(target: "auth", "User match with name");
 
     let mut hasher = Sha256::new();
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
     let host = &config.hostname;
 
-    logger::logln(&format!("Found user hash {}", hex));
+    info!(target: "auth", "Found user hash {}", hex);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
 
-    logger::logln(&format!("user {},host {}", user, host));
+    info!(target: "auth", "user {},host {}", user, host);
 
     let host_url = format!("{}/access/{}?ref=build", config.keyhouse.base_url, host);
-    logger::logln(&format!("Host URL: {}", host_url));
+    info!(target: "auth", "Host URL: {}", host_url);
     let name_files: Vec<NameFile> = match client
         .get(&host_url)
         .header("Authorization", format!("Bearer {}", config.keyhouse.token))
@@ -50,21 +51,21 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
     {
         Ok(mut r) if r.status().is_success() => {
             let text = r.text()?;
-            logger::logln(&format!("Response: {:?}", text));
+            info!(target: "auth", "Response: {:?}", text);
             serde_json::from_str(&text).unwrap_or_default()
         }
         Ok(r) => {
-            logger::logln(&format!("Failed to fetch names: {}", r.status()));
+            info!(target: "auth", "Failed to fetch names: {}", r.status());
             vec![]
         }
         Err(e) => {
-            logger::logln(&format!("Error fetching names: {:?}", e));
+            info!(target: "auth", "Error fetching names: {:?}", e);
             vec![]
         }
     };
     let projects: Vec<String> = name_files.into_iter().map(|f| f.name).collect();
 
-    logger::logln(&format!("Found projects: {:?} for host {}", projects, host));
+    info!(target: "auth", "Found projects: {:?} for host {}", projects, host);
     for project in &projects {
         let project_url = format!(
             "{}/access/{}/{}/{}?ref=build",
@@ -78,8 +79,8 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
         {
             Ok(mut resp) if resp.status().is_success() => {
                 let text = resp.text()?;
-                logger::logln(&format!("Response: {:?}", text));
-                logger::logln("User validated");
+                info!(target: "auth", "Response: {:?}", text);
+                info!(target: "auth", "User validated");
                 return Ok(true);
             }
             Ok(_) | Err(_) => continue,
@@ -157,31 +158,27 @@ pub fn fetch_github_projects(config: &Config, user: &str) -> Result<Vec<String>>
                 let json_text = r.text()?;
                 let json: serde_json::Value = serde_json::from_str(&json_text)
                     .map_err(|e| {
-                        logger::logln(&format!("Failed to parse JSON from GitHub: {}", e));
+                        info!(target: "update", "Failed to parse JSON from GitHub: {}", e);
                         e
                     })
                     .chain_err(|| "Invalid JSON received from GitHub.")?;
-
                 let encoded_content = json["content"]
                     .as_str()
                     .ok_or_else(|| Error::from("Missing 'content' field in JSON."))?;
-                let content = base64::decode(encoded_content.trim_end())
-                    .chain_err(|| "Base64 decoding failed.")?;
+                let cleaned_encoded = encoded_content.replace('\n', "").replace('\r', "");
+                let content =
+                    base64::decode(&cleaned_encoded).chain_err(|| "Base64 decoding failed.")?;
                 let decoded_str =
                     String::from_utf8(content).chain_err(|| "UTF-8 decoding failed.")?;
-                logger::logln(&format!("Decoded string: {}", decoded_str));
+                info!(target: "update", "Decoded string: {}", decoded_str);
                 let projects = decoded_str
                     .lines()
                     .filter_map(|line| line.split('|').nth(1))
                     .map(String::from)
                     .collect::<Vec<String>>();
-                logger::logln(&format!("Projects: {:?}", projects));
                 Ok(projects)
             } else {
-                logger::logln(&format!(
-                    "GitHub API request failed with status: {}",
-                    r.status()
-                ));
+                info!(target: "update", "GitHub API request failed with status: {}", r.status());
                 Err(Error::from(format!(
                     "GitHub API request failed with status: {}",
                     r.status()
@@ -201,7 +198,7 @@ pub fn fetch_file_names(
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
-    println!(
+    info!(target: "update", 
         "Fetching file names from {}/{}?ref=master and token {}",
         base_url, directory, token
     );
@@ -227,6 +224,6 @@ pub fn fetch_file_names(
         .into());
     }
 
-    println!("Fetched file names: {:?}", file_names);
+    info!(target: "update", "Fetched file names: {:?}", file_names);
     Ok(())
 }

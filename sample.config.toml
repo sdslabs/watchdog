@@ -27,4 +27,4 @@ channel = 'C0123456789'
 # Logging
 [logging]
 debug='true'
-offset="+5:30"
+offset='+5:30'

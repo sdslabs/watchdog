@@ -9,10 +9,11 @@ use std::process::Command;
 
 use clap::{App, AppSettings, Arg, SubCommand};
 
+use auth::handle_auth;
 use lib::config::{get_config_value, set_config_value};
 use lib::errors::Error;
-use lib::logger;
-use auth::handle_auth;
+use lib::logger::init_logger;
+use log::{info,error};
 use ssh::{handle_ssh, handle_ssh_logs};
 use su::{handle_su, handle_su_logs};
 use sudo::{handle_sudo, handle_sudo_logs};
@@ -83,23 +84,27 @@ fn print_traceback(e: Error) {
 fn main() {
     let app = make_app();
     let matches = app.get_matches();
-
+    init_logger().unwrap();
+    info!(target: "watchdog", "Watchdog started.");
     if let Some(ref _matches) = matches.subcommand_matches("sudo") {
         if let Err(e) = handle_sudo() {
             println!("watchdog-sudo error: {}", e);
+            error!("watchdog-sudo error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
     } else if let Some(ref _matches) = matches.subcommand_matches("su") {
         if let Err(e) = handle_su() {
             println!("watchdog-su error: {}", e);
+            error!("watchdog-su error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
     } else if let Some(ref _matches) = matches.subcommand_matches("ssh") {
-        logger::logln("SSH Command");
+        info!("SSH Command");
         if let Err(e) = handle_ssh() {
             println!("watchdog-ssh error: {}", e);
+            error!("watchdog-ssh error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
@@ -108,16 +113,15 @@ fn main() {
         let keytype = matches.value_of("keytype").unwrap();
         let user = matches.value_of("user").unwrap();
         let ssh_key = format!("{} {}", keytype, pubkey);
-        logger::logln(&format!("ssh_key: {}", ssh_key));
         if let Err(e) = handle_auth(&user, &ssh_key) {
             println!("watchdog-auth error: {}", e);
-            logger::logln(&format!("watchdog-auth error: {}", e));
+            error!("watchdog-auth error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
     } else if let Some(ref matches) = matches.subcommand_matches("logs") {
         let filter = matches.value_of("filter").unwrap();
-        logger::logln(&format!("Filter: {}", filter));
+        info!("Filter: {}", filter);
         if filter == "all" {
             handle_all_logs();
         } else if filter == "sudo" {
@@ -154,14 +158,14 @@ fn main() {
                 }
             }
         };
-    } else if let Some(ref _matches)= matches.subcommand_matches("update") {
+    } else if let Some(ref _matches) = matches.subcommand_matches("update") {
         if let Err(e) = handle_update() {
             println!("watchdog-update error: {}", e);
+            error!("watchdog-update error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    }
-    else {
+    } else {
         println!("No command passed");
         std::process::exit(1);
     }

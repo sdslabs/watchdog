@@ -2,9 +2,9 @@ pub mod config;
 pub mod environment;
 pub mod init;
 pub mod keyhouse;
+pub mod logger;
 pub mod notifier;
 pub mod utils;
-pub mod logger;
 #[macro_use]
 extern crate error_chain;
 
