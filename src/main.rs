@@ -5,18 +5,16 @@ mod ssh;
 mod su;
 mod sudo;
 mod update;
-use std::process::Command;
 
 use clap::{App, AppSettings, Arg, SubCommand};
 
 use auth::handle_auth;
-use lib::config::{get_config_value, set_config_value};
 use lib::errors::Error;
-use lib::logger::init_logger;
-use log::{info,error};
-use ssh::{handle_ssh, handle_ssh_logs};
-use su::{handle_su, handle_su_logs};
-use sudo::{handle_sudo, handle_sudo_logs};
+use lib::logger::{handle_logs_all, handle_logs_for, init_logger};
+use log::{error, info};
+use ssh::handle_ssh;
+use su::handle_su;
+use sudo::handle_sudo;
 use update::handle_update;
 
 fn make_app<'a, 'b>() -> App<'a, 'b> {
@@ -24,14 +22,68 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
         .author("SDSLabs <contact@sdslabs.co>")
         .about("Simple server access management system on a binary")
-        .subcommand(SubCommand::with_name("logs")
-            .about("Get the global watchdog logs")
-            .arg(Arg::with_name("filter")
-                .short("f")
-                .long("filter")
-                .help("Filter logs according to service. Can take value among `su`, `sudo`, `ssh` or `all`")
-                .takes_value(true)
-                .default_value("all")))
+        .subcommand(
+            SubCommand::with_name("logs")
+                .about("Fetch logs from watchdog components")
+                .arg(Arg::with_name("level")
+                        .long("level")
+                        .takes_value(true)
+                        .help("Filter log level when no component is specified (defaults to 'watchdog')"))
+                .subcommand(
+                    SubCommand::with_name("all")
+                        .about("Logs from whole watchdog")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level: info, warn, error"))
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Logs from watchdog update")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level: info, warn, error"))
+                )
+                .subcommand(
+                    SubCommand::with_name("sudo")
+                        .about("Logs from sudo")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("su")
+                        .about("Logs from su")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("ssh")
+                        .about("Logs from ssh")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("watchdog")
+                        .about("Logs from watchdog")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+        )
         .subcommand(SubCommand::with_name("sudo")
             .about("Handles the PAM sudo calls by pam_exec for Watchdog"))
         .subcommand(SubCommand::with_name("su")
@@ -86,7 +138,32 @@ fn main() {
     let matches = app.get_matches();
     init_logger().unwrap();
     info!(target: "watchdog", "Watchdog started.");
-    if let Some(ref _matches) = matches.subcommand_matches("sudo") {
+    if let Some(logs_matches) = matches.subcommand_matches("logs") {
+        let level = logs_matches.value_of("level");
+        match logs_matches.subcommand() {
+            ("all", Some(sub_m)) => {
+                handle_logs_all(sub_m.value_of("level").or(level));
+            }
+            ("update", Some(sub_m)) => {
+                handle_logs_for("update", sub_m.value_of("level").or(level));
+            }
+            ("sudo", Some(sub_m)) => {
+                handle_logs_for("sudo", sub_m.value_of("level").or(level));
+            }
+            ("su", Some(sub_m)) => {
+                handle_logs_for("su", sub_m.value_of("level").or(level));
+            }
+            ("ssh", Some(sub_m)) => {
+                handle_logs_for("ssh", sub_m.value_of("level").or(level));
+            }
+            ("watchdog", Some(sub_m)) => {
+                handle_logs_for("watchdog", sub_m.value_of("level").or(level));
+            }
+            _ => {
+                handle_logs_for("watchdog", level);
+            }
+        }
+    } else if let Some(ref _matches) = matches.subcommand_matches("sudo") {
         if let Err(e) = handle_sudo() {
             println!("watchdog-sudo error: {}", e);
             error!("watchdog-sudo error: {}", e);
@@ -119,45 +196,6 @@ fn main() {
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("logs") {
-        let filter = matches.value_of("filter").unwrap();
-        info!("Filter: {}", filter);
-        if filter == "all" {
-            handle_all_logs();
-        } else if filter == "sudo" {
-            handle_sudo_logs();
-        } else if filter == "su" {
-            handle_su_logs();
-        } else if filter == "ssh" {
-            handle_ssh_logs();
-        } else {
-            println!("Invalid Filter");
-            std::process::exit(1);
-        }
-    } else if let Some(ref matches) = matches.subcommand_matches("config") {
-        let key = matches.value_of("key").unwrap();
-        let val = matches.value_of("value");
-        let _ = match val {
-            Some(v) => {
-                match set_config_value(key, v) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        println!("watchdog-config error: {}", e);
-                        std::process::exit(1);
-                    }
-                };
-            }
-            None => {
-                let v = get_config_value(key);
-                match v {
-                    Ok(s) => println!("{}", s),
-                    Err(e) => {
-                        println!("watchdog-config error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        };
     } else if let Some(ref _matches) = matches.subcommand_matches("update") {
         if let Err(e) = handle_update() {
             println!("watchdog-update error: {}", e);
@@ -169,12 +207,4 @@ fn main() {
         println!("No command passed");
         std::process::exit(1);
     }
-}
-
-fn handle_all_logs() {
-    /* TODO: Unimplemented function */
-    Command::new("less")
-        .arg("/opt/watchdog/logs/sudo.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }

@@ -1,10 +1,9 @@
 use fern::{Dispatch, InitError};
 use log::{LevelFilter, Log};
-use std::{
-    collections::HashMap,
-    fs, io,
-    sync::Mutex,
-};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+use std::{collections::HashMap, fs, io, sync::Mutex};
 
 use crate::config::read_config;
 use crate::utils::parse_offset;
@@ -22,7 +21,7 @@ pub fn init_logger() -> Result<(), InitError> {
     })?;
 
     if config.logging.debug == "false" {
-        return Ok(()); // No logging
+        return Ok(());
     }
 
     let offset = parse_offset(&config.logging.offset).map_err(|_| {
@@ -50,7 +49,7 @@ pub fn init_logger() -> Result<(), InitError> {
         .map_err(InitError::SetLoggerError)
 }
 
-use chrono::FixedOffset;
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 
 struct PerTargetLogger {
     base_dir: String,
@@ -67,9 +66,9 @@ impl log::Log for PerTargetLogger {
             return;
         }
 
-        let target = if record.target().is_empty(){
+        let target = if record.target().is_empty() {
             "watchdog"
-        }else{
+        } else {
             record.target()
         };
         let mut loggers = TARGET_LOGGERS.lock().unwrap();
@@ -112,4 +111,88 @@ impl log::Log for PerTargetLogger {
     }
 
     fn flush(&self) {}
+}
+
+pub fn handle_logs_for(component: &str, level: Option<&str>) {
+    let path = format!("/opt/watchdog/custom-logs/{}.logs", component);
+    let path = Path::new(&path);
+
+    if !path.exists() {
+        eprintln!("Log file for component '{}' does not exist.", component);
+        return;
+    }
+
+    let file = File::open(path).expect("Unable to open log file");
+    let reader = BufReader::new(file);
+
+    let filter_level = level.map(|lvl| lvl.to_uppercase());
+
+    for line in reader.lines() {
+        let line = line.unwrap_or_default();
+
+        if let Some(start) = line.find('[') {
+            if let Some(end) = line.find(']') {
+                let level_in_line = &line[start + 1..end];
+
+                if let Some(ref lvl) = filter_level {
+                    if level_in_line == lvl {
+                        println!("{}", line);
+                    }
+                } else {
+                    println!("{}", line);
+                }
+            }
+        }
+    }
+}
+
+pub fn handle_logs_all(level: Option<&str>) {
+    let log_dir = Path::new("/opt/watchdog/custom-logs");
+    let mut all_logs = Vec::new();
+    println!("Fetching logs from directory: {}", log_dir.display());
+
+    if let Ok(entries) = fs::read_dir(log_dir) {
+        for entry in entries.flatten() {
+            println!("Processing file: {}", entry.path().display());
+            if let Ok(file) = fs::File::open(entry.path()) {
+                let reader = io::BufReader::new(file);
+
+                for line in reader.lines().flatten() {
+                    if let Some((timestamp_str, rest)) = line.split_once(' ') {
+                        let full_ts = timestamp_str.to_string()
+                            + " "
+                            + rest.split_whitespace().next().unwrap_or("");
+
+                        if let Ok(naive_dt) =
+                            NaiveDateTime::parse_from_str(&full_ts, "%Y-%m-%d %H:%M:%S")
+                        {
+                            let datetime: DateTime<Utc> = Utc.from_utc_datetime(&naive_dt);
+
+                            let message = line[full_ts.len()..].trim_start();
+
+                            let passes_level_filter = match level {
+                                Some(target_level) => {
+                                    let formatted_level =
+                                        format!("[{}]", target_level.to_uppercase());
+                                    message.contains(&formatted_level)
+                                }
+                                None => true,
+                            };
+
+                            if passes_level_filter {
+                                all_logs.push((datetime, line.clone()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("Sorting logs by timestamp...{}", all_logs.len());
+    all_logs.sort_by_key(|(dt, _)| *dt);
+
+    for (_, log_line) in all_logs {
+        println!("{}", log_line);
+    }
 }

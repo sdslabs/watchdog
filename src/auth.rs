@@ -1,4 +1,4 @@
-use log::{info,error};
+use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 
 use lib::config::read_config;

@@ -4,7 +4,7 @@ use lib::init::init;
 use lib::keyhouse::fetch_file_names;
 use lib::keyhouse::fetch_github_projects;
 use lib::utils::add_user_to_groups;
-use log::{info, error};
+use log::{error, info};
 
 pub fn handle_update() -> Result<()> {
     let mut users: Vec<String> = Vec::new();

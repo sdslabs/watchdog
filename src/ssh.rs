@@ -1,11 +1,10 @@
 use std::env;
-use std::process::Command;
 
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
-use log::{info, error};
+use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 
 pub fn handle_ssh() -> Result<()> {
@@ -28,12 +27,4 @@ pub fn handle_ssh() -> Result<()> {
         }
     }
     Ok(())
-}
-
-pub fn handle_ssh_logs() {
-    info!(target: "ssh", "in handle_ssh_logs");
-    Command::new("less")
-        .arg("/opt/watchdog/logs/ssh.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }

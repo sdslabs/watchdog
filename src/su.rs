@@ -1,7 +1,6 @@
 use std::env;
-use std::process::Command;
 
-use log::{info, error};
+use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 
 use lib::config::read_config;
@@ -33,11 +32,4 @@ pub fn handle_su() -> Result<()> {
         }
     }
     Ok(())
-}
-
-pub fn handle_su_logs() {
-    Command::new("less")
-        .arg("/opt/watchdog/logs/su.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }
