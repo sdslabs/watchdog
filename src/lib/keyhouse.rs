@@ -199,8 +199,8 @@ pub fn fetch_file_names(
         .timeout(std::time::Duration::from_secs(10))
         .build()?;
     info!(target: "update",
-        "Fetching file names from {}/{}?ref=master and token {}",
-        base_url, directory, token
+        "Fetching file names from {}/{}?ref=master",
+        base_url, directory
     );
     let mut response = client
         .get(&format!("{}/{}?ref=master", base_url, directory))

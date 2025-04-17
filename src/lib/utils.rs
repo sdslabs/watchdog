@@ -29,8 +29,10 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
 
 pub fn create_linux_user(username: &str) -> Result<()> {
     Command::new("useradd")
-        .arg("--no-create-home")
-        .arg("--system")
+        .arg("-m")
+        .arg("-d")
+        .arg("/home")        
+        .args(&["-s", "/bin/bash"])
         .arg(username)
         .status()
         .chain_err(|| format!("Failed to add user {}", username))?;
