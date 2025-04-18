@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::collections::HashMap;
 
 use lib::config::read_config;
 use lib::errors::*;
@@ -7,22 +7,23 @@ use lib::keyhouse::fetch_file_names;
 use lib::keyhouse::fetch_github_projects;
 use lib::utils::add_user_to_groups;
 use lib::utils::create_linux_user;
+use log::debug;
 use log::{error, info};
 
 pub fn handle_update() -> Result<()> {
-    let mut users: Vec<String> = Vec::new();
+    let mut user_to_key: HashMap<String, String> = HashMap::new();
     log::info!(target: "update", "Watchdog update triggered.");
     let config = read_config()?;
     init(&config)?;
     let _ = fetch_file_names(
         &config.keyhouse.base_url,
-        "data/hosts",
+        "names",
         &config.keyhouse.token,
-        &mut users,
+        &mut user_to_key,
     )?;
-    info!(target: "update", "Fetched users: {:?}", users);
-    println!("Fetched users: {:?}", users);
-    for user in users.iter() {
+    info!(target: "update", "Fetched users: {:?}", user_to_key);
+    debug!("Fetched users: {:?}", user_to_key);
+    for (user, key_hash) in user_to_key.iter() {
         match create_linux_user(user) {
             Ok(_) => {
                 info!(target: "update", "User {} created successfully.", user);
@@ -31,13 +32,12 @@ pub fn handle_update() -> Result<()> {
                 error!(target: "update", "Failed to create user {}: {}", user, e);
             }
         }
-        match fetch_github_projects(&config, user) {
-            Ok(mut projects) => {
-                info!(target: "update", "Fetched projects for {}: {:?}",user, projects);
-                projects.retain(|p| p != &config.hostname);
-                info!(target: "update","Filtered projects (excluding self): {:?}", projects);
+        debug!("User: {}, Key Hash: {}", user, key_hash);
+        match fetch_github_projects(&config, key_hash) {
+            Ok(projects) => {
+                info!(target: "update", "Fetched projects for {}: {:?}", user, projects);
                 if let Err(e) = add_user_to_groups(user, &projects) {
-                    info!(target: "update","Failed to add user {} to project groups: {}", user, e);
+                    info!(target: "update", "Failed to add user {} to project groups: {}", user, e);
                 }
             }
             Err(e) => {

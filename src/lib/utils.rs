@@ -31,12 +31,12 @@ pub fn create_linux_user(username: &str) -> Result<()> {
     Command::new("useradd")
         .arg("-m")
         .arg("-d")
-        .arg("/home")        
+        .arg("/home")
         .args(&["-s", "/bin/bash"])
         .arg(username)
         .status()
         .chain_err(|| format!("Failed to add user {}", username))?;
-        info!(target: "update", "User {} added", username);
+    info!(target: "update", "User {} added", username);
     Ok(())
 }
 

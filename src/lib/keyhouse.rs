@@ -2,11 +2,12 @@ extern crate base64;
 extern crate crypto;
 extern crate serde_json;
 
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use log::info;
+use log::{debug, info};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
@@ -138,92 +139,108 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     }
 }
 
-pub fn fetch_github_projects(config: &Config, user: &str) -> Result<Vec<String>> {
+pub fn fetch_github_projects(config: &Config, key_hash: &str) -> Result<Vec<String>> {
+    debug!(target: "update", "Fetching projects for key hash: {}", key_hash);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
-    let res = client
-        .get(&format!(
-            "{}/data/hosts/{}?ref=master",
-            config.keyhouse.base_url, user
-        ))
-        .header(
-            "Authorization",
-            &format!("Bearer {}", config.keyhouse.token),
-        )
-        .send();
-    match res {
-        Ok(mut r) => {
-            if r.status().is_success() {
-                let json_text = r.text()?;
-                let json: serde_json::Value = serde_json::from_str(&json_text)
-                    .map_err(|e| {
-                        info!(target: "update", "Failed to parse JSON from GitHub: {}", e);
-                        e
-                    })
-                    .chain_err(|| "Invalid JSON received from GitHub.")?;
-                let encoded_content = json["content"]
-                    .as_str()
-                    .ok_or_else(|| Error::from("Missing 'content' field in JSON."))?;
-                let cleaned_encoded = encoded_content.replace('\n', "").replace('\r', "");
-                let content =
-                    base64::decode(&cleaned_encoded).chain_err(|| "Base64 decoding failed.")?;
-                let decoded_str =
-                    String::from_utf8(content).chain_err(|| "UTF-8 decoding failed.")?;
-                info!(target: "update", "Decoded string: {}", decoded_str);
-                let projects = decoded_str
-                    .lines()
-                    .filter_map(|line| line.split('|').nth(1))
-                    .map(String::from)
-                    .collect::<Vec<String>>();
-                Ok(projects)
-            } else {
-                info!(target: "update", "GitHub API request failed with status: {}", r.status());
-                Err(Error::from(format!(
-                    "GitHub API request failed with status: {}",
-                    r.status()
-                )))
-            }
+    let host_url = format!(
+        "{}/access/{}?ref=build",
+        config.keyhouse.base_url, config.hostname
+    );
+
+    let name_files: Vec<NameFile> = match client
+        .get(&host_url)
+        .header("Authorization", format!("Bearer {}", config.keyhouse.token))
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+    {
+        Ok(mut r) if r.status().is_success() => {
+            let text = r.text()?;
+            info!(target: "update", "Response: {:?}", text);
+            serde_json::from_str(&text).unwrap_or_default()
         }
-        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
+        Ok(r) => {
+            info!(target: "update", "Failed to fetch names: {}", r.status());
+            vec![]
+        }
+        Err(e) => {
+            info!(target: "update", "Error fetching names: {:?}", e);
+            vec![]
+        }
+    };
+    debug!(target: "update", "Fetched names: {:?}", name_files);
+    let projects: Vec<String> = name_files.into_iter().map(|f| f.name).collect();
+    debug!(target: "update", "Found projects: {:?} for host {}", projects, config.hostname);
+    let mut user_projects: Vec<String> = Vec::new();
+    for project in &projects {
+        let project_url = format!(
+            "{}/access/{}/{}/{}?ref=build",
+            config.keyhouse.base_url, config.hostname, project, key_hash
+        );
+
+        match client
+            .get(&project_url)
+            .header("Authorization", format!("Bearer {}", config.keyhouse.token))
+            .send()
+        {
+            Ok(mut resp) if resp.status().is_success() => {
+                let text = resp.text()?;
+                info!(target: "auth", "Response: {:?}", text);
+                user_projects.push(project.to_string());
+            }
+            Ok(_) | Err(_) => continue,
+        }
     }
+    Ok(user_projects)
 }
 
 pub fn fetch_file_names(
     base_url: &str,
     directory: &str,
     token: &str,
-    file_names: &mut Vec<String>,
+    user_to_key: &mut HashMap<String, String>,
 ) -> Result<()> {
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()?;
-    info!(target: "update",
-        "Fetching file names from {}/{}?ref=master",
-        base_url, directory
-    );
+    let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
+
+    let list_url = format!("{}/{}?ref=build", base_url, directory);
     let mut response = client
-        .get(&format!("{}/{}?ref=master", base_url, directory))
-        .header("Authorization", &format!("Bearer {}", token))
+        .get(&list_url)
+        .header("Authorization", format!("Bearer {}", token))
         .send()?;
 
-    if response.status().is_success() {
-        let contents: Value = response.json()?;
-        if let Some(files) = contents.as_array() {
-            for file in files {
-                if let Some(file_name) = file["name"].as_str() {
-                    file_names.push(file_name.to_string());
+    let files: Value = response.json()?;
+
+    if let Some(entries) = files.as_array() {
+        for entry in entries {
+            if let Some(key_hash) = entry["name"].as_str() {
+                let file_url = format!("{}/{}/{}?ref=build", base_url, directory, key_hash);
+
+                let mut file_response = client
+                    .get(&file_url)
+                    .header("Authorization", format!("Bearer {}", token))
+                    .send()?;
+
+                if file_response.status().is_success() {
+                    let file_json: Value = file_response.json()?;
+
+                    if let (Some(encoded), Some(encoding)) = (
+                        file_json.get("content").and_then(|v| v.as_str()),
+                        file_json.get("encoding").and_then(|v| v.as_str()),
+                    ) {
+                        if encoding == "base64" {
+                            let cleaned = encoded.replace('\n', "").replace('\r', "");
+                            let decoded_bytes = base64::decode(&cleaned)?;
+                            let username = String::from_utf8(decoded_bytes)?.trim().to_string();
+
+                            user_to_key.insert(username, key_hash.to_string());
+                        }
+                    }
                 }
             }
         }
-    } else {
-        return Err(format!(
-            "GitHub API request failed with status: {}",
-            response.status()
-        )
-        .into());
     }
+    info!(target: "update", "Fetched user to key mapping: {:?}", user_to_key);
 
-    info!(target: "update", "Fetched file names: {:?}", file_names);
     Ok(())
 }
