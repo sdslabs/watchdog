@@ -3,7 +3,7 @@ use std::fs;
 use serde_derive::Deserialize;
 use toml_edit::{value, Document};
 
-use crate::errors::*;
+use crate::{constants::CONFIG_PATH, errors::*};
 
 #[derive(Deserialize, Clone)]
 pub struct KeyhouseConf {
@@ -32,13 +32,13 @@ pub struct Config {
 }
 
 pub fn read_config() -> Result<Config> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let config: Config = toml::from_str(&toml_str)?;
     Ok(config)
 }
 
 pub fn set_config_value(key: &str, val: &str) -> Result<()> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let mut doc = toml_str.parse::<Document>().chain_err(|| {
         "Invalid TOML file. Please reverify if /opt/watchdog/config.toml is a valid toml file."
     })?;
@@ -68,12 +68,12 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
             return Err("Invalid Key passed".into());
         }
     }
-    fs::write("/opt/watchdog/config.toml", doc.to_string())?;
+    fs::write(CONFIG_PATH, doc.to_string())?;
     Ok(())
 }
 
 pub fn get_config_value(key: &str) -> Result<String> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let doc = toml_str.parse::<Document>().chain_err(|| {
         "Invalid TOML file. Please reverify if /opt/watchdog/config.toml is a valid toml file."
     })?;

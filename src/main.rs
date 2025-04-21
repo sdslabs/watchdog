@@ -10,7 +10,7 @@ use clap::{App, AppSettings, Arg, SubCommand};
 
 use auth::handle_auth;
 use lib::errors::Error;
-use lib::logger::{handle_logs_all, handle_logs_for, init_logger};
+use lib::logger::{handle_logs_all, handle_logs_for, init_logger, LogTarget};
 use log::{error, info};
 use ssh::handle_ssh;
 use su::handle_su;
@@ -145,19 +145,19 @@ fn main() {
                 handle_logs_all(sub_m.value_of("level").or(level));
             }
             ("update", Some(sub_m)) => {
-                handle_logs_for("update", sub_m.value_of("level").or(level));
+                handle_logs_for(LogTarget::UPDATE.as_str(), sub_m.value_of("level").or(level));
             }
             ("sudo", Some(sub_m)) => {
-                handle_logs_for("sudo", sub_m.value_of("level").or(level));
+                handle_logs_for(LogTarget::SUDO.as_str(), sub_m.value_of("level").or(level));
             }
             ("su", Some(sub_m)) => {
-                handle_logs_for("su", sub_m.value_of("level").or(level));
+                handle_logs_for(LogTarget::SU.as_str(), sub_m.value_of("level").or(level));
             }
             ("ssh", Some(sub_m)) => {
-                handle_logs_for("ssh", sub_m.value_of("level").or(level));
+                handle_logs_for(LogTarget::SSH.as_str(), sub_m.value_of("level").or(level));
             }
             ("watchdog", Some(sub_m)) => {
-                handle_logs_for("watchdog", sub_m.value_of("level").or(level));
+                handle_logs_for(LogTarget::WATCHDOG.as_str(), sub_m.value_of("level").or(level));
             }
             _ => {
                 handle_logs_for("watchdog", level);

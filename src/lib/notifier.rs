@@ -3,6 +3,7 @@ extern crate serde_json;
 
 use crate::config::Config;
 use crate::errors::*;
+use crate::logger::LogTarget;
 use log::info;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
 use reqwest::Client;
@@ -90,7 +91,7 @@ impl Slack {
         if let Some(ts) = thread_ts {
             payload["thread_ts"] = json!(ts);
         }
-        info!(target: "watchdog", "Slack payload: {:?}", payload);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack payload: {:?}", payload);
         let mut res = self
             .client
             .post("https://slack.com/api/chat.postMessage")
@@ -120,7 +121,7 @@ impl Slack {
             .query(&[("channel", &self.channel), ("limit", &"1".to_string())])
             .send()
             .chain_err(|| "Failed to fetch message history")?;
-        info!(target: "watchdog", "Slack response: {:?}", res);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack response: {:?}", res);
         let body: serde_json::Value = res.json().chain_err(|| "Invalid JSON from Slack")?;
         if !body["ok"].as_bool().unwrap_or(false) {
             return Err(format!(
@@ -129,13 +130,13 @@ impl Slack {
             )
             .into());
         }
-        info!(target: "watchdog", "Slack body: {:?}", body);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack body: {:?}", body);
         let ts = body["messages"]
             .as_array()
             .and_then(|arr| arr.first())
             .and_then(|msg| msg["ts"].as_str())
             .ok_or("No messages found in channel")?;
-        info!(target: "watchdog", "Slack timestamp: {:?}", ts);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack timestamp: {:?}", ts);
         Ok(ts.to_string())
     }
 }
@@ -159,10 +160,10 @@ impl Notifier for Slack {
     fn post_sudo_summary(&self, conf: &Config, pam_ruser: String, pwd: String) -> Result<()> {
         let parent_text = format!("{} attempted sudo on {}", pam_ruser, conf.hostname);
         self.post_message(&parent_text, None)?;
-        info!(target: "watchdog", "Posted parent message: {:?}", parent_text);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Posted parent message: {:?}", parent_text);
 
         let thread_ts = self.fetch_latest_ts()?;
-        info!(target: "watchdog", "Fetched thread timestamp: {:?}", thread_ts);
+        info!(target: LogTarget::WATCHDOG.as_str(), "Fetched thread timestamp: {:?}", thread_ts);
 
         let pwd_text = format!("Attempted in :{} ", pwd);
         self.post_message(&pwd_text, Some(&thread_ts))?;

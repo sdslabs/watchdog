@@ -1,5 +1,6 @@
 use std::env;
 
+use lib::logger::LogTarget;
 use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 
@@ -17,9 +18,9 @@ pub fn handle_su() -> Result<()> {
 
     let pam_user = env::var("PAM_USER")
                      .chain_err(|| "PAM_USER not set. If you are running this by `watchdog su`, please don't. It's an internal command, intended to be used by PAM.")?;
-    info!(target: "su", "PAM_RUSER: {}", pam_ruser);
-    info!(target: "su", "PAM_USER: {}", pam_user);
-    info!(target: "su", "PAM_TYPE: {}", pam_type);
+    info!(target: LogTarget::SU.as_str(), "PAM_RUSER: {}", pam_ruser);
+    info!(target: LogTarget::SU.as_str(), "PAM_USER: {}", pam_user);
+    info!(target: LogTarget::SU.as_str(), "PAM_TYPE: {}", pam_type);
     if pam_type == "open_session" {
         let config = read_config()?;
         init(&config)?;

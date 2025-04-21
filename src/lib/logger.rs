@@ -6,7 +6,32 @@ use std::path::Path;
 use std::{collections::HashMap, fs, io, sync::Mutex};
 
 use crate::config::read_config;
+use crate::constants::LOG_PATH;
 use crate::utils::parse_offset;
+
+pub enum LogTarget {
+    UPDATE,
+    AUTH,
+    SUDO,
+    WATCHDOG,
+    SSH,
+    SU,
+    Other(String),
+}
+
+impl LogTarget {
+    pub fn as_str(&self) -> &str {
+        match self {
+            LogTarget::UPDATE => "update",
+            LogTarget::AUTH => "auth",
+            LogTarget::SSH => "ssh",
+            LogTarget::SUDO => "sudo",
+            LogTarget::SU => "su",
+            LogTarget::WATCHDOG => "watchdog",
+            LogTarget::Other(s) => s.as_str(),
+        }
+    }
+}
 
 lazy_static::lazy_static! {
     static ref TARGET_LOGGERS: Mutex<HashMap<String, Box<dyn Log>>> = Mutex::new(HashMap::new());
@@ -31,7 +56,7 @@ pub fn init_logger() -> Result<(), InitError> {
         ))
     })?;
 
-    let base_dir = "/opt/watchdog/custom-logs";
+    let base_dir = LOG_PATH;
     fs::create_dir_all(base_dir).map_err(|e| {
         InitError::from(io::Error::new(
             io::ErrorKind::Other,
@@ -114,7 +139,7 @@ impl log::Log for PerTargetLogger {
 }
 
 pub fn handle_logs_for(component: &str, level: Option<&str>) {
-    let path = format!("/opt/watchdog/custom-logs/{}.logs", component);
+    let path = format!("{}/{}.logs",LOG_PATH, component);
     let path = Path::new(&path);
 
     if !path.exists() {
@@ -147,7 +172,7 @@ pub fn handle_logs_for(component: &str, level: Option<&str>) {
 }
 
 pub fn handle_logs_all(level: Option<&str>) {
-    let log_dir = Path::new("/opt/watchdog/custom-logs");
+    let log_dir = Path::new(LOG_PATH);
     let mut all_logs = Vec::new();
     println!("Fetching logs from directory: {}", log_dir.display());
 

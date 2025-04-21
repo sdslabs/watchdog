@@ -5,6 +5,8 @@ pub mod keyhouse;
 pub mod logger;
 pub mod notifier;
 pub mod utils;
+pub mod constants;
+
 #[macro_use]
 extern crate error_chain;
 

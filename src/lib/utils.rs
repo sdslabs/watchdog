@@ -1,11 +1,7 @@
-use crate::errors::*;
+use crate::{errors::*, logger::LogTarget};
 use chrono::FixedOffset;
-use log::info;
+use log::{error, info};
 use std::{fs, process::Command};
-pub const AUTH_LOG_PATH: &str = "/opt/watchdog/custom-logs/auth.logs";
-pub const SSH_LOG_PATH: &str = "/opt/watchdog/custom-logs/ssh.logs";
-pub const SUDO_LOG_PATH: &str = "/opt/watchdog/custom-logs/sudo.logs";
-pub const SU_LOG_PATH: &str = "/opt/watchdog/custom-logs/su.logs";
 
 pub fn clear_file(path: &str) -> Result<()> {
     fs::write(path, "")?;
@@ -15,29 +11,66 @@ pub fn clear_file(path: &str) -> Result<()> {
 pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     for group in groups {
         if group != user {
-            Command::new("usermod")
+            let output = Command::new("usermod")
                 .arg("-aG")
                 .arg(group)
                 .arg(user)
                 .output()
-                .chain_err(|| format!("Failed to add user {} to group {}", user, group))?;
-            info!(target: "update", "User {} added to group {}", user, group);
+                .chain_err(|| {
+                    format!(
+                        "Failed to execute usermod for user {} and group {}",
+                        user, group
+                    )
+                })?;
+
+            if output.status.success() {
+                info!(target: LogTarget::UPDATE.as_str(), "User {} successfully added to group {}", user, group);
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                error!(target: LogTarget::UPDATE.as_str(), "usermod failed for user {} and group {}: {}", user, group, stderr.trim());
+                return Err(Error::from(format!(
+                    "usermod failed for user {} and group {}: {}",
+                    user,
+                    group,
+                    stderr.trim()
+                )));
+            }
         }
     }
     Ok(())
 }
 
 pub fn create_linux_user(username: &str) -> Result<()> {
-    Command::new("useradd")
+    let check = Command::new("id").arg(username).status();
+
+    if let Ok(status) = check {
+        if status.success() {
+            info!(target: LogTarget::UPDATE.as_str(), "User {} already exists, skipping creation.", username);
+            return Ok(());
+        }
+    }
+
+    let status = Command::new("useradd")
         .arg("-m")
         .arg("-d")
-        .arg("/home")
-        .args(&["-s", "/bin/bash"])
+        .arg(format!("/home/{}", username))
+        .arg("-s")
+        .arg("/bin/bash")
         .arg(username)
         .status()
-        .chain_err(|| format!("Failed to add user {}", username))?;
-    info!(target: "update", "User {} added", username);
-    Ok(())
+        .chain_err(|| format!("Failed to run useradd command for {}", username))?;
+
+    if status.success() {
+        info!(target: LogTarget::UPDATE.as_str(), "User {} added successfully.", username);
+        Ok(())
+    } else {
+        let code = status.code().unwrap_or(-1);
+        error!(target: LogTarget::UPDATE.as_str(), "useradd failed for user {} with exit code {}", username, code);
+        Err(Error::from(format!(
+            "useradd failed for user {} with exit code {}",
+            username, code
+        )))
+    }
 }
 
 pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {

@@ -1,3 +1,4 @@
+use lib::logger::LogTarget;
 use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 
@@ -10,18 +11,18 @@ use lib::notifier;
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
     init(&config)?;
-    info!(target: "auth", "ssh_key in handle_auth: {}", ssh_key);
+    info!(target: LogTarget::AUTH.as_str(), "ssh_key in handle_auth: {}", ssh_key);
     match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
-            info!(target: "auth", "User validated by handle auth");
+            info!(target: LogTarget::AUTH.as_str(), "User validated by handle auth");
             println!("{}", ssh_key);
             Ok(())
         }
 
         Ok(false) => {
-            info!(target: "auth", "User not validated");
+            info!(target: LogTarget::AUTH.as_str(), "User not validated");
             let name = get_name(&config, ssh_key)?;
-            info!(target: "auth", "Logging failed");
+            info!(target: LogTarget::AUTH.as_str(), "Logging failed");
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
@@ -38,7 +39,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             Ok(())
         }
         Err(e) => {
-            error!(target: "auth", "Error while validating user from keyhouse");
+            error!(target: LogTarget::AUTH.as_str(), "Error while validating user from keyhouse");
             Err(e).chain_err(|| "Error while validating user from keyhouse")
         }
     }

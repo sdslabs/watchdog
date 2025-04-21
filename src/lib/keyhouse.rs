@@ -14,6 +14,7 @@ use serde_json::Value;
 
 use crate::config::Config;
 use crate::errors::*;
+use crate::logger::LogTarget;
 
 #[derive(Debug, Deserialize)]
 struct NameFile {
@@ -22,28 +23,28 @@ struct NameFile {
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
     let name = get_name(&config, ssh_key)?;
-    info!(target: "auth", "User name: {} ,user {}", name, user);
+    info!(target: LogTarget::AUTH.as_str(), "User name: {} ,user {}", name, user);
     if name.trim() != user.trim() {
-        info!(target: "auth", "User didn't match with name");
+        info!(target: LogTarget::AUTH.as_str(), "User didn't match with name");
         return Ok(false);
     }
-    info!(target: "auth", "User match with name");
+    info!(target: LogTarget::AUTH.as_str(), "User match with name");
 
     let mut hasher = Sha256::new();
     hasher.input_str(&ssh_key);
     let hex = hasher.result_str();
     let host = &config.hostname;
 
-    info!(target: "auth", "Found user hash {}", hex);
+    info!(target: LogTarget::AUTH.as_str(), "Found user hash {}", hex);
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
 
-    info!(target: "auth", "user {},host {}", user, host);
+    info!(target: LogTarget::AUTH.as_str(), "user {},host {}", user, host);
 
     let host_url = format!("{}/access/{}?ref=build", config.keyhouse.base_url, host);
-    info!(target: "auth", "Host URL: {}", host_url);
+    info!(target: LogTarget::AUTH.as_str(), "Host URL: {}", host_url);
     let name_files: Vec<NameFile> = match client
         .get(&host_url)
         .header("Authorization", format!("Bearer {}", config.keyhouse.token))
@@ -52,21 +53,21 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
     {
         Ok(mut r) if r.status().is_success() => {
             let text = r.text()?;
-            info!(target: "auth", "Response: {:?}", text);
+            info!(target: LogTarget::AUTH.as_str(), "Response: {:?}", text);
             serde_json::from_str(&text).unwrap_or_default()
         }
         Ok(r) => {
-            info!(target: "auth", "Failed to fetch names: {}", r.status());
+            info!(target: LogTarget::AUTH.as_str(), "Failed to fetch names: {}", r.status());
             vec![]
         }
         Err(e) => {
-            info!(target: "auth", "Error fetching names: {:?}", e);
+            info!(target: LogTarget::AUTH.as_str(), "Error fetching names: {:?}", e);
             vec![]
         }
     };
     let projects: Vec<String> = name_files.into_iter().map(|f| f.name).collect();
 
-    info!(target: "auth", "Found projects: {:?} for host {}", projects, host);
+    info!(target: LogTarget::AUTH.as_str(), "Found projects: {:?} for host {}", projects, host);
     for project in &projects {
         let project_url = format!(
             "{}/access/{}/{}/{}?ref=build",
@@ -80,8 +81,8 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
         {
             Ok(mut resp) if resp.status().is_success() => {
                 let text = resp.text()?;
-                info!(target: "auth", "Response: {:?}", text);
-                info!(target: "auth", "User validated");
+                info!(target: LogTarget::AUTH.as_str(), "Response: {:?}", text);
+                info!(target: LogTarget::AUTH.as_str(), "User validated");
                 return Ok(true);
             }
             Ok(_) | Err(_) => continue,
@@ -140,7 +141,7 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
 }
 
 pub fn fetch_github_projects(config: &Config, key_hash: &str) -> Result<Vec<String>> {
-    debug!(target: "update", "Fetching projects for key hash: {}", key_hash);
+    debug!(target: LogTarget::UPDATE.as_str(), "Fetching projects for key hash: {}", key_hash);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()?;
@@ -157,21 +158,21 @@ pub fn fetch_github_projects(config: &Config, key_hash: &str) -> Result<Vec<Stri
     {
         Ok(mut r) if r.status().is_success() => {
             let text = r.text()?;
-            info!(target: "update", "Response: {:?}", text);
+            info!(target: LogTarget::UPDATE.as_str(), "Response: {:?}", text);
             serde_json::from_str(&text).unwrap_or_default()
         }
         Ok(r) => {
-            info!(target: "update", "Failed to fetch names: {}", r.status());
+            info!(target: LogTarget::UPDATE.as_str(), "Failed to fetch names: {}", r.status());
             vec![]
         }
         Err(e) => {
-            info!(target: "update", "Error fetching names: {:?}", e);
+            info!(target: LogTarget::UPDATE.as_str(), "Error fetching names: {:?}", e);
             vec![]
         }
     };
-    debug!(target: "update", "Fetched names: {:?}", name_files);
+    debug!(target: LogTarget::UPDATE.as_str(), "Fetched names: {:?}", name_files);
     let projects: Vec<String> = name_files.into_iter().map(|f| f.name).collect();
-    debug!(target: "update", "Found projects: {:?} for host {}", projects, config.hostname);
+    debug!(target: LogTarget::UPDATE.as_str(), "Found projects: {:?} for host {}", projects, config.hostname);
     let mut user_projects: Vec<String> = Vec::new();
     for project in &projects {
         let project_url = format!(
@@ -186,7 +187,7 @@ pub fn fetch_github_projects(config: &Config, key_hash: &str) -> Result<Vec<Stri
         {
             Ok(mut resp) if resp.status().is_success() => {
                 let text = resp.text()?;
-                info!(target: "auth", "Response: {:?}", text);
+                info!(target: LogTarget::AUTH.as_str(), "Response: {:?}", text);
                 user_projects.push(project.to_string());
             }
             Ok(_) | Err(_) => continue,
@@ -240,7 +241,7 @@ pub fn fetch_file_names(
             }
         }
     }
-    info!(target: "update", "Fetched user to key mapping: {:?}", user_to_key);
+    info!(target: LogTarget::UPDATE.as_str(), "Fetched user to key mapping: {:?}", user_to_key);
 
     Ok(())
 }
