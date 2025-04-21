@@ -1,9 +1,9 @@
 use std::env;
 
-use lib::{config::read_config, logger::LogTarget};
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
+use lib::{config::read_config, logger::LogTarget};
 use log::{error, info};
 use nix::unistd::{fork, ForkResult};
 

@@ -139,7 +139,7 @@ impl log::Log for PerTargetLogger {
 }
 
 pub fn handle_logs_for(component: &str, level: Option<&str>) {
-    let path = format!("{}/{}.logs",LOG_PATH, component);
+    let path = format!("{}/{}.logs", LOG_PATH, component);
     let path = Path::new(&path);
 
     if !path.exists() {

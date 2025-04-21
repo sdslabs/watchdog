@@ -145,7 +145,10 @@ fn main() {
                 handle_logs_all(sub_m.value_of("level").or(level));
             }
             ("update", Some(sub_m)) => {
-                handle_logs_for(LogTarget::UPDATE.as_str(), sub_m.value_of("level").or(level));
+                handle_logs_for(
+                    LogTarget::UPDATE.as_str(),
+                    sub_m.value_of("level").or(level),
+                );
             }
             ("sudo", Some(sub_m)) => {
                 handle_logs_for(LogTarget::SUDO.as_str(), sub_m.value_of("level").or(level));
@@ -157,7 +160,10 @@ fn main() {
                 handle_logs_for(LogTarget::SSH.as_str(), sub_m.value_of("level").or(level));
             }
             ("watchdog", Some(sub_m)) => {
-                handle_logs_for(LogTarget::WATCHDOG.as_str(), sub_m.value_of("level").or(level));
+                handle_logs_for(
+                    LogTarget::WATCHDOG.as_str(),
+                    sub_m.value_of("level").or(level),
+                );
             }
             _ => {
                 handle_logs_for("watchdog", level);

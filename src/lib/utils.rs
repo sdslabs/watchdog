@@ -1,7 +1,11 @@
-use crate::{errors::*, logger::LogTarget};
+use crate::{constants::HOME_DIR, errors::*, logger::LogTarget};
 use chrono::FixedOffset;
 use log::{error, info};
-use std::{fs, process::Command};
+use std::{
+    fs::{self, OpenOptions},
+    io::Write,
+    process::Command,
+};
 
 pub fn clear_file(path: &str) -> Result<()> {
     fs::write(path, "")?;
@@ -53,7 +57,7 @@ pub fn create_linux_user(username: &str) -> Result<()> {
     let status = Command::new("useradd")
         .arg("-m")
         .arg("-d")
-        .arg(format!("/home/{}", username))
+        .arg(format!("{}/{}", HOME_DIR, username))
         .arg("-s")
         .arg("/bin/bash")
         .arg(username)
@@ -71,6 +75,27 @@ pub fn create_linux_user(username: &str) -> Result<()> {
             username, code
         )))
     }
+}
+
+pub fn update_user_bashrc(user: &str) -> Result<()> {
+    let bashrc_path = format!("{}/{}/.bashrc", HOME_DIR, user);
+    let bashrc_lines = r#"
+# Load group-specific config if present
+for group in $(id -nG "$USER"); do
+    group_bashrc="/home/$group/.bashrc"
+    [ -f "$group_bashrc" ] && source "$group_bashrc"
+done
+"#;
+
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(&bashrc_path)?;
+
+    file.write_all(bashrc_lines.as_bytes())?;
+    info!("Appended group-config loader to '{}'.", bashrc_path);
+
+    Ok(())
 }
 
 pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {

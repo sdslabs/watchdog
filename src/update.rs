@@ -8,6 +8,7 @@ use lib::keyhouse::fetch_github_projects;
 use lib::logger::LogTarget;
 use lib::utils::add_user_to_groups;
 use lib::utils::create_linux_user;
+use lib::utils::update_user_bashrc;
 use log::debug;
 use log::{error, info};
 
@@ -31,6 +32,14 @@ pub fn handle_update() -> Result<()> {
             }
             Err(e) => {
                 error!(target: LogTarget::UPDATE.as_str(), "Failed to create user {}: {}", user, e);
+            }
+        }
+        match update_user_bashrc(user) {
+            Ok(_) => {
+                info!(target: LogTarget::UPDATE.as_str(), "User {} bashrc updated successfully.", user);
+            }
+            Err(e) => {
+                error!(target: LogTarget::UPDATE.as_str(), "Failed to update user {} bashrc: {}", user, e);
             }
         }
         debug!("User: {}, Key Hash: {}", user, key_hash);
