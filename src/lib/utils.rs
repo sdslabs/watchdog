@@ -14,28 +14,35 @@ pub fn clear_file(path: &str) -> Result<()> {
 
 pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     for group in groups {
-        if group != user {
+        let mut target_group = group.as_str();
+        if group == "sudo" {
+            if !group_exists("sudo") && group_exists("wheel") {
+                target_group = "wheel";
+            }
+        }
+
+        if target_group != user {
             let output = Command::new("usermod")
                 .arg("-aG")
-                .arg(group)
+                .arg(target_group)
                 .arg(user)
                 .output()
                 .chain_err(|| {
                     format!(
                         "Failed to execute usermod for user {} and group {}",
-                        user, group
+                        user, target_group
                     )
                 })?;
 
             if output.status.success() {
-                info!(target: LogTarget::UPDATE.as_str(), "User {} successfully added to group {}", user, group);
+                info!(target: LogTarget::UPDATE.as_str(), "User {} successfully added to group {}", user, target_group);
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
-                error!(target: LogTarget::UPDATE.as_str(), "usermod failed for user {} and group {}: {}", user, group, stderr.trim());
+                error!(target: LogTarget::UPDATE.as_str(), "usermod failed for user {} and group {}: {}", user, target_group, stderr.trim());
                 return Err(Error::from(format!(
                     "usermod failed for user {} and group {}: {}",
                     user,
-                    group,
+                    target_group,
                     stderr.trim()
                 )));
             }
@@ -43,6 +50,7 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     }
     Ok(())
 }
+
 
 pub fn create_linux_user(username: &str) -> Result<()> {
     let check = Command::new("id").arg(username).status();
@@ -85,6 +93,7 @@ for group in $(id -nG "$USER"); do
     group_bashrc="/home/$group/.bashrc"
     [ -f "$group_bashrc" ] && source "$group_bashrc"
 done
+cd /home
 "#;
 
     let mut file = OpenOptions::new()
@@ -116,6 +125,12 @@ pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {
     let offset = FixedOffset::east_opt(total_offset).chain_err(|| "Invalid offset");
     let offset_value = offset.unwrap();
     Ok(offset_value)
+}
+
+fn group_exists(group: &str) -> bool {
+    fs::read_to_string("/etc/group")
+        .map(|content| content.lines().any(|line| line.starts_with(&format!("{}:", group))))
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
