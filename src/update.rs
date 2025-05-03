@@ -9,6 +9,7 @@ use lib::logger::LogTarget;
 use lib::utils::add_user_to_groups;
 use lib::utils::create_linux_user;
 use lib::utils::update_user_bashrc;
+use lib::utils::user_exists;
 use log::debug;
 use log::{error, info};
 
@@ -26,21 +27,27 @@ pub fn handle_update() -> Result<()> {
     info!(target: LogTarget::UPDATE.as_str(), "Fetched users: {:?}", user_to_key);
     debug!("Fetched users: {:?}", user_to_key);
     for (user, key_hash) in user_to_key.iter() {
-        match create_linux_user(user) {
-            Ok(_) => {
-                info!(target: LogTarget::UPDATE.as_str(), "User {} created successfully.", user);
+        if !user_exists(user) {
+            match create_linux_user(user) {
+                Ok(_) => {
+                    info!(target: LogTarget::UPDATE.as_str(), "User {} created successfully.", user);
+                }
+                Err(e) => {
+                    error!(target: LogTarget::UPDATE.as_str(), "Failed to create user {}: {}", user, e);
+                    continue;
+                }
             }
-            Err(e) => {
-                error!(target: LogTarget::UPDATE.as_str(), "Failed to create user {}: {}", user, e);
+
+            match update_user_bashrc(user) {
+                Ok(_) => {
+                    info!(target: LogTarget::UPDATE.as_str(), "User {} bashrc updated successfully.", user);
+                }
+                Err(e) => {
+                    error!(target: LogTarget::UPDATE.as_str(), "Failed to update user {} bashrc: {}", user, e);
+                }
             }
-        }
-        match update_user_bashrc(user) {
-            Ok(_) => {
-                info!(target: LogTarget::UPDATE.as_str(), "User {} bashrc updated successfully.", user);
-            }
-            Err(e) => {
-                error!(target: LogTarget::UPDATE.as_str(), "Failed to update user {} bashrc: {}", user, e);
-            }
+        } else {
+            info!(target: LogTarget::UPDATE.as_str(), "User {} already exists. Skipping creation and bashrc update.", user);
         }
         debug!("User: {}, Key Hash: {}", user, key_hash);
         match fetch_github_projects(&config, key_hash) {

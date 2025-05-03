@@ -133,6 +133,13 @@ fn group_exists(group: &str) -> bool {
         .unwrap_or(false)
 }
 
+pub fn user_exists(username: &str) -> bool {
+    match Command::new("id").arg(username).status() {
+        Ok(status) => status.success(),
+        Err(_) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
