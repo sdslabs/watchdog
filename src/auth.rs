@@ -8,10 +8,27 @@ use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
 use lib::notifier;
 
+#[cfg(feature = "auto-update")]
+use crate::update::handle_update;
+
 pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     let config = read_config()?;
     init(&config)?;
     info!(target: LogTarget::AUTH.as_str(), "ssh_key in handle_auth: {}", ssh_key);
+
+    #[cfg(feature = "auto-update")]
+    {
+        match handle_update() {
+            Ok(_) => {
+                info!(target: LogTarget::UPDATE.as_str(), "Update handled successfully");
+            }
+            Err(e) => {
+                error!(target: LogTarget::UPDATE.as_str(), "Error handling update: {}", e);
+                return Err(e);
+            }
+        }
+    }
+    
     match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
             info!(target: LogTarget::AUTH.as_str(), "User validated by handle auth");

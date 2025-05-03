@@ -30,3 +30,7 @@ path = "src/main.rs"
 [lib]
 name = "lib"
 path = "src/lib/lib.rs"
+
+[features]
+default = []
+auto-update = []
