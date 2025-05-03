@@ -140,6 +140,32 @@ pub fn user_exists(username: &str) -> bool {
     }
 }
 
+pub fn extract_sudo_command() -> Result<String> {
+    let pid = std::process::id();
+    let status_path = format!("/proc/{}/status", pid);
+
+    let parent_pid = fs::read_to_string(&status_path)?
+        .lines()
+        .find(|line| line.starts_with("PPid:"))
+        .and_then(|line| line.split_whitespace().nth(1))
+        .ok_or("Could not find PPid in /proc/[pid]/status")?
+        .parse::<u32>()
+        .chain_err(|| "Failed to parse PPid")?;
+
+    let cmdline_path = format!("/proc/{}/cmdline", parent_pid);
+    let cmdline = fs::read(&cmdline_path)
+        .map(|bytes| {
+            bytes
+                .split(|b| *b == 0)
+                .map(|part| String::from_utf8_lossy(part).to_string())
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_else(|_| "UNKNOWN".to_string());
+
+    Ok(cmdline)
+}
+
 #[cfg(test)]
 mod tests {
 

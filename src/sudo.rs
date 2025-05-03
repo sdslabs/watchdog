@@ -3,6 +3,7 @@ use std::env;
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
+use lib::utils::extract_sudo_command;
 use lib::{config::read_config, logger::LogTarget};
 use log::{error, info};
 use nix::unistd::{fork, ForkResult};
@@ -29,7 +30,12 @@ pub fn handle_sudo() -> Result<()> {
                         .unwrap_or_else(|_| "<unknown>".to_string())
                 });
                 info!(target: LogTarget::SUDO.as_str(), "PWD: {}", pwd);
-                notifier::post_sudo_summary(&config, pam_ruser, pwd)?;
+                let cmd = extract_sudo_command().unwrap_or_else(|_| {
+                    error!("Failed to extract sudo command");
+                    "UNKNOWN".to_string()
+                });
+                info!(target: LogTarget::SUDO.as_str(), "Command: {}", cmd);
+                notifier::post_sudo_summary(&config, pam_ruser, pwd,cmd)?;
             }
             Err(_) => error!("Fork failed"),
         }
