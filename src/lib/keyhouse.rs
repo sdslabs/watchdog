@@ -257,7 +257,8 @@ pub fn fetch_recent_commit(config: &Config) -> Result<String> {
         .timeout(Duration::from_secs(10))
         .build()?;
 
-    let url = format!("{}/commits?sha=build&per_page=1", config.keyhouse.base_url);
+    let clean_base: &str = config.keyhouse.base_url.trim_end_matches("/contents");
+    let url = format!("{}/commits?sha=build&per_page=1", clean_base);
     info!(target: LogTarget::UPDATE.as_str(), "Fetching recent commit from URL: {}", url);
 
     let mut response = match client
@@ -296,10 +297,10 @@ pub fn fetch_recent_commit(config: &Config) -> Result<String> {
         .chain_err(|| "Failed to parse GitHub commits response into JSON")?;
 
     if let Some(commit) = commits.first() {
-        log::info!("Fetched latest commit SHA: {}", commit.sha);
+        log::info!(target: LogTarget::UPDATE.as_str(),"Fetched latest commit SHA: {}", commit.sha);
         Ok(commit.sha.clone())
     } else {
-        log::error!("No commits found in GitHub response");
+        log::error!(target: LogTarget::UPDATE.as_str(),"No commits found in GitHub response");
         Err(Error::from("No commits found in the GitHub response"))
     }
 }
@@ -310,9 +311,10 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
         .build()
         .chain_err(|| "Failed to build HTTP client")?;
 
-    let url = format!("{}/compare/{}...{}", config.keyhouse.base_url, base, merge);
+    let clean_base: &str = config.keyhouse.base_url.trim_end_matches("/contents");
+    let url = format!("{}/compare/{}...{}", clean_base, base, merge);
 
-    info!("Fetching diff from GitHub: {}", url);
+    info!(target: LogTarget::UPDATE.as_str(),"Fetching diff from GitHub: {}", url);
 
     let mut response = match client
         .get(&url)
@@ -322,7 +324,7 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
     {
         Ok(resp) => resp,
         Err(e) => {
-            log::error!("Error sending request to GitHub: {}", e);
+            log::error!(target: LogTarget::UPDATE.as_str(),"Error sending request to GitHub: {}", e);
             return Err(Error::from(format!(
                 "Failed to send request to GitHub: {}",
                 e
@@ -331,7 +333,7 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
     };
 
     if !response.status().is_success() {
-        log::error!(
+        log::error!(target: LogTarget::UPDATE.as_str(),
             "GitHub API returned non-success status: {}",
             response.status()
         );
@@ -345,7 +347,7 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
         .text()
         .chain_err(|| "Failed to read GitHub diff response body")?;
 
-    info!("Fetched diff between {} and {}", base, merge);
+    info!(target: LogTarget::UPDATE.as_str(),"Fetched diff between {} and {}", base, merge);
     Ok(diff)
 }
 
@@ -362,7 +364,7 @@ pub fn fetch_and_decode_file(
     };
 
     let url = format!(
-        "{}/contents/names/{}?ref={}",
+        "{}/names/{}?ref={}",
         config.keyhouse.base_url, hash, commit_ref
     );
 
@@ -377,12 +379,12 @@ pub fn fetch_and_decode_file(
         .header(ACCEPT, "application/vnd.github.v3+json")
         .send()
         .map_err(|e| {
-            log::error!("Failed to fetch file from GitHub for hash {}: {}", hash, e);
+            log::error!(target: LogTarget::UPDATE.as_str(),"Failed to fetch file from GitHub for hash {}: {}", hash, e);
             Error::from(format!("Failed to fetch file for hash {}: {}", hash, e))
         })?;
 
     if !file_resp.status().is_success() {
-        warn!(
+        warn!(target: LogTarget::UPDATE.as_str(),
             "GitHub API returned error for file at hash {}: {}",
             hash,
             file_resp.status()
@@ -401,10 +403,10 @@ pub fn fetch_and_decode_file(
         let decoded_str =
             String::from_utf8(decoded).chain_err(|| "Decoded content is not valid UTF-8")?;
 
-        info!("Decoded file for hash {}", hash);
+        info!(target: LogTarget::UPDATE.as_str(),"Decoded file for hash {}", hash);
         Ok(Some(decoded_str))
     } else {
-        warn!("No 'content' field found for file hash {}", hash);
+        warn!(target: LogTarget::UPDATE.as_str(),"No 'content' field found for file hash {}", hash);
         Ok(None)
     }
 }

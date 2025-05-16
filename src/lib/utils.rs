@@ -261,7 +261,7 @@ pub fn extract_diff_parts(diff_data: &str) -> Vec<(String, String, String, Strin
                 "modified"
             };
             info!(
-                "Access file change detected: {}/{}/{}, status: {}",
+                target: LogTarget::UPDATE.as_str(),"Access file change detected: {}/{}/{}, status: {}",
                 project, provider, hash, status
             );
             parts_with_status
@@ -275,7 +275,7 @@ pub fn extract_diff_parts(diff_data: &str) -> Vec<(String, String, String, Strin
             } else {
                 "modifieduser"
             };
-            info!("Name file change detected: {}, status: {}", hash, status);
+            info!(target: LogTarget::UPDATE.as_str(),"Name file change detected: {}, status: {}", hash, status);
             parts_with_status
                 .entry(("".to_string(), "names".to_string(), hash.to_string()))
                 .or_insert(status.to_string());

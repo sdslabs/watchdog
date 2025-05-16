@@ -118,7 +118,7 @@ pub fn update_from_commit(config: &Config, base_commit: &str) -> Result<()> {
     };
     for (cloud_provider, project, hash, status) in extract_diff_parts(&diff) {
         info!(
-            "Parsed diff - Project: {}, Cloud Provider: {}, Hash: {}, Status: {}",
+            target: LogTarget::UPDATE.as_str(),"Parsed diff - Project: {}, Cloud Provider: {}, Hash: {}, Status: {}",
             project, cloud_provider, hash, status
         );
         if cloud_provider != config.hostname {
@@ -127,9 +127,9 @@ pub fn update_from_commit(config: &Config, base_commit: &str) -> Result<()> {
         }
         if let Ok(Some(decoded_str)) = fetch_and_decode_file(&config, &hash, &status, &base_commit)
         {
-            info!("Decoded file for hash {}", hash);
+            info!(target: LogTarget::UPDATE.as_str(),"Decoded file for hash {}", hash);
             if status == "added" {
-                info!("Adding user to group...");
+                info!(target: LogTarget::UPDATE.as_str(),"Adding user to group...");
                 add_user_to_groups(&decoded_str, &[project.clone()]).unwrap_or_else(|e| {
                     error!("Failed to add user to group: {}", e);
                 });
