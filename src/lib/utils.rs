@@ -1,12 +1,13 @@
 use crate::{constants::HOME_DIR, errors::*, logger::LogTarget};
 use chrono::FixedOffset;
 use log::{error, info};
+use regex::Regex;
 use std::{
+    collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
     process::Command,
 };
-
 pub fn clear_file(path: &str) -> Result<()> {
     fs::write(path, "")?;
     Ok(())
@@ -51,6 +52,54 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     Ok(())
 }
 
+pub fn remove_user_from_groups(user: &str, groups: &[String]) -> Result<()> {
+    for group in groups {
+        let mut target_group = group.as_str();
+        if group == "sudo" {
+            if !group_exists("sudo") && group_exists("wheel") {
+                target_group = "wheel";
+            }
+        }
+
+        if target_group != user {
+            let output = Command::new("gpasswd")
+                .arg("-d")
+                .arg(user)
+                .arg(target_group)
+                .output()
+                .chain_err(|| {
+                    format!(
+                        "Failed to execute gpasswd for user {} and group {}",
+                        user, target_group
+                    )
+                })?;
+
+            if output.status.success() {
+                info!(
+                    target: LogTarget::UPDATE.as_str(),
+                    "User {} successfully removed from group {}",
+                    user, target_group
+                );
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                error!(
+                    target: LogTarget::UPDATE.as_str(),
+                    "gpasswd failed for user {} and group {}: {}",
+                    user,
+                    target_group,
+                    stderr.trim()
+                );
+                return Err(Error::from(format!(
+                    "gpasswd failed for user {} and group {}: {}",
+                    user,
+                    target_group,
+                    stderr.trim()
+                )));
+            }
+        }
+    }
+    Ok(())
+}
 
 pub fn create_linux_user(username: &str) -> Result<()> {
     let check = Command::new("id").arg(username).status();
@@ -81,6 +130,30 @@ pub fn create_linux_user(username: &str) -> Result<()> {
         Err(Error::from(format!(
             "useradd failed for user {} with exit code {}",
             username, code
+        )))
+    }
+}
+
+pub fn delete_user(user: &str) -> Result<()> {
+    let output = Command::new("sudo")
+        .arg("userdel")
+        .arg("-r")
+        .arg(user)
+        .output()?;
+
+    if output.status.success() {
+        info!("User '{}' deleted successfully.", user);
+        Ok(())
+    } else {
+        error!(
+            "Failed to delete user '{}': {}",
+            user,
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(Error::from(format!(
+            "Failed to delete user '{}': {}",
+            user,
+            String::from_utf8_lossy(&output.stderr)
         )))
     }
 }
@@ -129,7 +202,11 @@ pub fn parse_offset(offset_str: &str) -> Result<FixedOffset> {
 
 fn group_exists(group: &str) -> bool {
     fs::read_to_string("/etc/group")
-        .map(|content| content.lines().any(|line| line.starts_with(&format!("{}:", group))))
+        .map(|content| {
+            content
+                .lines()
+                .any(|line| line.starts_with(&format!("{}:", group)))
+        })
         .unwrap_or(false)
 }
 
@@ -164,6 +241,50 @@ pub fn extract_sudo_command() -> Result<String> {
         .unwrap_or_else(|_| "UNKNOWN".to_string());
 
     Ok(cmdline)
+}
+
+pub fn extract_diff_parts(diff_data: &str) -> Vec<(String, String, String, String)> {
+    let re_access = Regex::new(r"diff --git a/(access/([^/]+)/([^/]+)/([\w\d]+))").unwrap();
+    let re_names = Regex::new(r"diff --git a/(names/([\w\d]+))").unwrap();
+    let mut parts_with_status = HashMap::new();
+    for line in diff_data.lines() {
+        if let Some(caps) = re_access.captures(line) {
+            let full_path = &caps[1];
+            let project = &caps[2];
+            let provider = &caps[3];
+            let hash = &caps[4];
+            let status = if diff_data.contains("new file mode") && line.contains(full_path) {
+                "added"
+            } else if diff_data.contains("deleted file mode") && line.contains(full_path) {
+                "deleted"
+            } else {
+                "modified"
+            };
+            info!(
+                "Access file change detected: {}/{}/{}, status: {}",
+                project, provider, hash, status
+            );
+            parts_with_status
+                .entry((project.to_string(), provider.to_string(), hash.to_string()))
+                .or_insert(status.to_string());
+        } else if let Some(caps) = re_names.captures(line) {
+            let full_path = &caps[1];
+            let hash = &caps[2];
+            let status = if diff_data.contains("deleted file mode") && line.contains(full_path) {
+                "deleteduser"
+            } else {
+                "modifieduser"
+            };
+            info!("Name file change detected: {}, status: {}", hash, status);
+            parts_with_status
+                .entry(("".to_string(), "names".to_string(), hash.to_string()))
+                .or_insert(status.to_string());
+        }
+    }
+    parts_with_status
+        .into_iter()
+        .map(|((proj, prov, hash), status)| (proj, prov, hash, status))
+        .collect()
 }
 
 #[cfg(test)]

@@ -35,7 +35,7 @@ pub fn handle_sudo() -> Result<()> {
                     "UNKNOWN".to_string()
                 });
                 info!(target: LogTarget::SUDO.as_str(), "Command: {}", cmd);
-                notifier::post_sudo_summary(&config, pam_ruser, pwd,cmd)?;
+                notifier::post_sudo_summary(&config, pam_ruser, pwd, cmd)?;
             }
             Err(_) => error!("Fork failed"),
         }

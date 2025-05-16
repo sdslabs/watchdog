@@ -19,7 +19,13 @@ pub trait Notifier {
     where
         Self: Sized;
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String, pwd: String, cmd: String) -> Result<()>;
+    fn post_sudo_summary(
+        &self,
+        conf: &Config,
+        pam_ruser: String,
+        pwd: String,
+        cmd: String,
+    ) -> Result<()>;
     /// Post summary for su attempts
     fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()>;
     /// Post summary for ssh attempts
@@ -35,10 +41,10 @@ pub trait Notifier {
 struct GlobalNotifier(Vec<Box<dyn Notifier>>);
 
 /// Post summary for sudo attempts
-pub fn post_sudo_summary(conf: &Config, pam_ruser: String, pwd: String,cmd: String) -> Result<()> {
+pub fn post_sudo_summary(conf: &Config, pam_ruser: String, pwd: String, cmd: String) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        notif.post_sudo_summary(conf, pam_ruser.clone(), pwd.clone(),cmd.clone())?
+        notif.post_sudo_summary(conf, pam_ruser.clone(), pwd.clone(), cmd.clone())?
     }
     Ok(())
 }
@@ -157,7 +163,13 @@ impl Notifier for Slack {
         })
     }
 
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String, pwd: String, cmd: String) -> Result<()> {
+    fn post_sudo_summary(
+        &self,
+        conf: &Config,
+        pam_ruser: String,
+        pwd: String,
+        cmd: String,
+    ) -> Result<()> {
         let parent_text = format!("{} attempted sudo on {}", pam_ruser, conf.hostname);
         self.post_message(&parent_text, None)?;
         info!(target: LogTarget::WATCHDOG.as_str(), "Posted parent message: {:?}", parent_text);

@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
-use log::{debug, info};
+use log::{debug, info, warn};
+use reqwest::header::ACCEPT;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,6 +20,11 @@ use crate::logger::LogTarget;
 #[derive(Debug, Deserialize)]
 struct NameFile {
     name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CommitInfo {
+    pub sha: String,
 }
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
@@ -244,4 +250,161 @@ pub fn fetch_file_names(
     info!(target: LogTarget::UPDATE.as_str(), "Fetched user to key mapping: {:?}", user_to_key);
 
     Ok(())
+}
+
+pub fn fetch_recent_commit(config: &Config) -> Result<String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()?;
+
+    let url = format!("{}/commits?sha=build&per_page=1", config.keyhouse.base_url);
+    info!(target: LogTarget::UPDATE.as_str(), "Fetching recent commit from URL: {}", url);
+
+    let mut response = match client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", config.keyhouse.token))
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            log::error!("Error sending request to GitHub: {}", e);
+            return Err(Error::from(format!(
+                "Failed to send request to GitHub: {}",
+                e
+            )));
+        }
+    };
+
+    if !response.status().is_success() {
+        log::error!(
+            "GitHub API returned non-success status: {}",
+            response.status()
+        );
+        return Err(Error::from(format!(
+            "GitHub API returned error status: {}",
+            response.status()
+        )));
+    }
+
+    let text = response
+        .text()
+        .chain_err(|| "Failed to read response body")?;
+    info!(target: LogTarget::UPDATE.as_str(), "GitHub commits response: {}", text);
+
+    let commits: Vec<CommitInfo> = serde_json::from_str(&text)
+        .chain_err(|| "Failed to parse GitHub commits response into JSON")?;
+
+    if let Some(commit) = commits.first() {
+        log::info!("Fetched latest commit SHA: {}", commit.sha);
+        Ok(commit.sha.clone())
+    } else {
+        log::error!("No commits found in GitHub response");
+        Err(Error::from("No commits found in the GitHub response"))
+    }
+}
+
+pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .chain_err(|| "Failed to build HTTP client")?;
+
+    let url = format!("{}/compare/{}...{}", config.keyhouse.base_url, base, merge);
+
+    info!("Fetching diff from GitHub: {}", url);
+
+    let mut response = match client
+        .get(&url)
+        .header(ACCEPT, "application/vnd.github.v3.diff")
+        .bearer_auth(&config.keyhouse.token)
+        .send()
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            log::error!("Error sending request to GitHub: {}", e);
+            return Err(Error::from(format!(
+                "Failed to send request to GitHub: {}",
+                e
+            )));
+        }
+    };
+
+    if !response.status().is_success() {
+        log::error!(
+            "GitHub API returned non-success status: {}",
+            response.status()
+        );
+        return Err(Error::from(format!(
+            "GitHub API returned error status: {}",
+            response.status()
+        )));
+    }
+
+    let diff = response
+        .text()
+        .chain_err(|| "Failed to read GitHub diff response body")?;
+
+    info!("Fetched diff between {} and {}", base, merge);
+    Ok(diff)
+}
+
+pub fn fetch_and_decode_file(
+    config: &Config,
+    hash: &str,
+    status: &str,
+    base_commit: &str,
+) -> Result<Option<String>> {
+    let commit_ref = if status == "deleted" || status == "deleteduser" {
+        base_commit
+    } else {
+        "build"
+    };
+
+    let url = format!(
+        "{}/contents/names/{}?ref={}",
+        config.keyhouse.base_url, hash, commit_ref
+    );
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .chain_err(|| "Failed to build HTTP client")?;
+
+    let mut file_resp = client
+        .get(&url)
+        .bearer_auth(&config.keyhouse.token)
+        .header(ACCEPT, "application/vnd.github.v3+json")
+        .send()
+        .map_err(|e| {
+            log::error!("Failed to fetch file from GitHub for hash {}: {}", hash, e);
+            Error::from(format!("Failed to fetch file for hash {}: {}", hash, e))
+        })?;
+
+    if !file_resp.status().is_success() {
+        warn!(
+            "GitHub API returned error for file at hash {}: {}",
+            hash,
+            file_resp.status()
+        );
+        return Ok(None); // Gracefully handle non-success HTTP codes
+    }
+
+    let file_json = file_resp
+        .json::<serde_json::Value>()
+        .chain_err(|| "Failed to parse file response as JSON")?;
+
+    if let Some(base64_content) = file_json["content"].as_str() {
+        let clean_base64 = base64_content.replace('\n', "");
+        let decoded =
+            base64::decode(&clean_base64).chain_err(|| "Failed to decode base64 content")?;
+        let decoded_str =
+            String::from_utf8(decoded).chain_err(|| "Decoded content is not valid UTF-8")?;
+
+        info!("Decoded file for hash {}", hash);
+        Ok(Some(decoded_str))
+    } else {
+        warn!("No 'content' field found for file hash {}", hash);
+        Ok(None)
+    }
 }
