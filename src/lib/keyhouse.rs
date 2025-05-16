@@ -389,7 +389,7 @@ pub fn fetch_and_decode_file(
             hash,
             file_resp.status()
         );
-        return Ok(None); // Gracefully handle non-success HTTP codes
+        return Ok(None); 
     }
 
     let file_json = file_resp

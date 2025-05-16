@@ -37,7 +37,7 @@ lazy_static::lazy_static! {
     static ref TARGET_LOGGERS: Mutex<HashMap<String, Box<dyn Log>>> = Mutex::new(HashMap::new());
 }
 
-pub fn init_logger() -> Result<(), InitError> {
+pub fn init_logger(global_level: LevelFilter) -> Result<(), InitError> {
     let config = read_config().map_err(|_| {
         InitError::from(io::Error::new(
             io::ErrorKind::Other,
@@ -67,23 +67,25 @@ pub fn init_logger() -> Result<(), InitError> {
     let logger = Box::new(PerTargetLogger {
         base_dir: base_dir.to_string(),
         offset,
+        global_level,
     });
 
-    log::set_boxed_logger(logger)
-        .map(|()| log::set_max_level(LevelFilter::Info))
-        .map_err(InitError::SetLoggerError)
+    log::set_boxed_logger(logger).map(|()| log::set_max_level(global_level))?;
+
+    Ok(())
 }
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
-
 struct PerTargetLogger {
-    base_dir: String,
-    offset: FixedOffset,
+        base_dir: String,
+        offset: FixedOffset,
+        global_level: LevelFilter,
 }
+
 
 impl log::Log for PerTargetLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
-        metadata.level() <= LevelFilter::Info
+        metadata.level() <= self.global_level
     }
 
     fn log(&self, record: &log::Record) {
