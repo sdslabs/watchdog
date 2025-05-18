@@ -28,3 +28,4 @@ channel = 'C0123456789'
 [logging]
 debug='true'
 offset='+5:30'
+verbosity='v'

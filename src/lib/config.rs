@@ -21,6 +21,7 @@ pub struct NotifiersConf {
 pub struct LoggingConf {
     pub debug: String,
     pub offset: String,
+    pub verbosity: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -64,6 +65,9 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "logging.offset" => {
             doc["logging"]["offset"] = value(val);
         }
+        "logging.verbosity" => {
+            doc["logging"]["verbosity"] = value(val);
+        }
         _ => {
             return Err("Invalid Key passed".into());
         }
@@ -85,6 +89,7 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "notifiers.channel" => doc["notifiers"]["channel"].as_str(),
         "logging.debug" => doc["logging"]["debug"].as_str(),
         "logging.offset" => doc["logging"]["offset"].as_str(),
+        "logging.verbosity" => doc["logging"]["verbosity"].as_str(),
         _ => {
             return Err("Invalid Key passed".into());
         }

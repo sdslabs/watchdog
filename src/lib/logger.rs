@@ -33,11 +33,20 @@ impl LogTarget {
     }
 }
 
+fn verbosity_to_level_filter(verbosity: &str) -> LevelFilter {
+    match verbosity {
+        "v" => LevelFilter::Info,
+        "vv" => LevelFilter::Debug,
+        "vvv" => LevelFilter::Trace,
+        _ => LevelFilter::Warn,
+    }
+}
+
 lazy_static::lazy_static! {
     static ref TARGET_LOGGERS: Mutex<HashMap<String, Box<dyn Log>>> = Mutex::new(HashMap::new());
 }
 
-pub fn init_logger(global_level: LevelFilter) -> Result<(), InitError> {
+pub fn init_logger() -> Result<(), InitError> {
     let config = read_config().map_err(|_| {
         InitError::from(io::Error::new(
             io::ErrorKind::Other,
@@ -48,6 +57,7 @@ pub fn init_logger(global_level: LevelFilter) -> Result<(), InitError> {
     if config.logging.debug == "false" {
         return Ok(());
     }
+    let global_level = verbosity_to_level_filter(&config.logging.verbosity);
 
     let offset = parse_offset(&config.logging.offset).map_err(|_| {
         InitError::from(io::Error::new(
@@ -77,11 +87,10 @@ pub fn init_logger(global_level: LevelFilter) -> Result<(), InitError> {
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 struct PerTargetLogger {
-        base_dir: String,
-        offset: FixedOffset,
-        global_level: LevelFilter,
+    base_dir: String,
+    offset: FixedOffset,
+    global_level: LevelFilter,
 }
-
 
 impl log::Log for PerTargetLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {

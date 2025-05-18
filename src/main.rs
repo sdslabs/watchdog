@@ -11,7 +11,7 @@ use clap::{App, AppSettings, Arg, SubCommand};
 use auth::handle_auth;
 use lib::errors::Error;
 use lib::logger::{handle_logs_all, handle_logs_for, init_logger, LogTarget};
-use log::{error, info, LevelFilter};
+use log::{error, info};
 use ssh::handle_ssh;
 use su::handle_su;
 use sudo::handle_sudo;
@@ -22,13 +22,6 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
         .version("0.1.0")
         .author("SDSLabs <contact@sdslabs.co>")
         .about("Simple server access management system on a binary")
-        .arg(
-            Arg::with_name("verbose")
-                .short("v")
-                .long("verbose")
-                .multiple(true)
-                .help("Increases logging verbosity each use for up to 3 times"),
-        )
         .subcommand(
             SubCommand::with_name("logs")
                 .about("Fetch logs from watchdog components")
@@ -143,16 +136,8 @@ fn print_traceback(e: Error) {
 fn main() {
     let app = make_app();
     let matches = app.get_matches();
-    let verbosity = matches.occurrences_of("verbose");
 
-    let level = match verbosity {
-        0 => LevelFilter::Warn,
-        1 => LevelFilter::Info,
-        2 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
-    };
-
-     init_logger(level).unwrap_or_else(|e| {
+    init_logger().unwrap_or_else(|e| {
         eprintln!("Logger failed to initialize: {}", e);
     });
     info!(target: "watchdog", "Watchdog started.");
