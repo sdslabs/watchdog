@@ -85,6 +85,14 @@ pub fn init_logger() -> Result<(), InitError> {
     Ok(())
 }
 
+
+fn classify_target(raw_target: &str) -> String {
+    match raw_target {
+        "update" | "auth" | "ssh" | "sudo" | "su" | "watchdog" => raw_target.to_string(),
+        _ => "dependencies".to_string(), // Third-party logs go here
+    }
+}
+
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 struct PerTargetLogger {
     base_dir: String,
@@ -102,14 +110,17 @@ impl log::Log for PerTargetLogger {
             return;
         }
 
-        let target = if record.target().is_empty() {
+        let raw_target = if record.target().is_empty() {
             "watchdog"
         } else {
             record.target()
         };
+
+        let target = classify_target(raw_target);
+
         let mut loggers = TARGET_LOGGERS.lock().unwrap();
 
-        if !loggers.contains_key(target) {
+        if !loggers.contains_key(&target) {
             let log_path = format!("{}/{}.logs", self.base_dir, target);
             match fern::log_file(&log_path) {
                 Ok(file) => {
@@ -122,9 +133,10 @@ impl log::Log for PerTargetLogger {
                                     .with_timezone(&offset)
                                     .format("%Y-%m-%d %H:%M:%S");
                                 out.finish(format_args!(
-                                    "{} [{}] {}",
+                                    "{} [{}] [{}] {}",
                                     time,
                                     record.level(),
+                                    record.target(),
                                     message
                                 ))
                             }
@@ -132,7 +144,7 @@ impl log::Log for PerTargetLogger {
                         .chain(file)
                         .into_log();
 
-                    loggers.insert(target.to_string(), logger);
+                    loggers.insert(target.clone(), logger);
                 }
                 Err(e) => {
                     eprintln!("Failed to create log file for {}: {}", target, e);
@@ -141,7 +153,7 @@ impl log::Log for PerTargetLogger {
             }
         }
 
-        if let Some(logger) = loggers.get(target) {
+        if let Some(logger) = loggers.get(&target) {
             logger.log(record);
         }
     }
