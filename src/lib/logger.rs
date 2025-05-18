@@ -28,7 +28,7 @@ impl LogTarget {
             LogTarget::SUDO => "sudo",
             LogTarget::SU => "su",
             LogTarget::WATCHDOG => "watchdog",
-            LogTarget::Other(s) => s.as_str(),
+            LogTarget::Other(_) => "watchdog",
         }
     }
 }
