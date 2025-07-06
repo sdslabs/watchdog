@@ -85,7 +85,6 @@ pub fn init_logger() -> Result<(), InitError> {
     Ok(())
 }
 
-
 fn classify_target(raw_target: &str) -> String {
     match raw_target {
         "update" | "auth" | "ssh" | "sudo" | "su" | "watchdog" => raw_target.to_string(),

@@ -161,13 +161,29 @@ pub fn delete_user(user: &str) -> Result<()> {
 pub fn update_user_bashrc(user: &str) -> Result<()> {
     let bashrc_path = format!("{}/{}/.bashrc", HOME_DIR, user);
     let bashrc_lines = r#"
-# Load group-specific config if present
+# Load group-specific config [WATCHDOG]
 for group in $(id -nG "$USER"); do
+    group_home="/home/$group"
     group_bashrc="/home/$group/.bashrc"
-    [ -f "$group_bashrc" ] && source "$group_bashrc"
+    if [ -f "$group_bashrc" ]; then
+        OLD_HOME="$HOME"
+        HOME="$group_home"
+        source "$group_bashrc"
+        HOME="$OLD_HOME"
+    fi
 done
 cd /home
 "#;
+
+    if let Ok(contents) = std::fs::read_to_string(&bashrc_path) {
+        if contents.contains("Load group-specific config [WATCHDOG]") {
+            info!(
+                "Group-config loader already present in '{}'. Skipping append.",
+                bashrc_path
+            );
+            return Ok(());
+        }
+    }
 
     let mut file = OpenOptions::new()
         .append(true)
