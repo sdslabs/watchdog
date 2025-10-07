@@ -26,9 +26,9 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             SubCommand::with_name("logs")
                 .about("Fetch logs from watchdog components")
                 .arg(Arg::with_name("level")
-                        .long("level")
-                        .takes_value(true)
-                        .help("Filter log level when no component is specified (defaults to 'watchdog')"))
+                    .long("level")
+                    .takes_value(true)
+                    .help("Filter log level when no component is specified (defaults to 'watchdog')"))
                 .subcommand(
                     SubCommand::with_name("all")
                         .about("Logs from whole watchdog")
@@ -114,13 +114,13 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             .about("Get or set Watchdog configuration")
             .setting(AppSettings::ArgRequiredElseHelp)
             .arg(Arg::with_name("key")
-                 .index(1)
-                 .help("Config variable to be fetched/set"))
+                .index(1)
+                .help("Config variable to be fetched/set"))
             .arg(Arg::with_name("value")
-                 .index(2)
-                 .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
+                .index(2)
+                .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
         .subcommand(SubCommand::with_name("update"))
-            .about("Update users and groups from Keyhouse")
+        .about("Update users and groups from Keyhouse")
 }
 
 fn print_traceback(e: Error) {
@@ -206,7 +206,8 @@ fn main() {
             std::process::exit(1);
         }
     } else if let Some(ref _matches) = matches.subcommand_matches("update") {
-        if let Err(e) = handle_update() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        if let Err(e) = rt.block_on(handle_update()) {
             println!("watchdog-update error: {}", e);
             error!("watchdog-update error: {}", e);
             print_traceback(e);

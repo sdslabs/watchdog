@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0.99"
-serde_json = "1.0.40"
+serde_json = "1.0.140"
 toml = "0.5.3"
 reqwest = "0.9.20"
 base64 = "0.10.1"
@@ -16,13 +16,13 @@ clap = "2.19"
 error-chain="0.12.1"
 toml_edit="0.1.5"
 nix = "0.9.0"
-openssl = "0.10"
-openssl-sys = "0.9.58"
 chrono = "0.4"
 log = "0.4"
 fern = "0.6"
 lazy_static = "1.5.0"
 regex = "1.11.1"
+watchdog_utils = { git = "ssh://git@github.com/sdslabs/watchdog-utils.git", branch = "saturn/watchdog-utils" }
+tokio = { version = "^1.37", features = ["rt-multi-thread"] }
 
 [[ bin ]]
 name = "watchdog"
