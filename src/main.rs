@@ -206,8 +206,7 @@ fn main() {
             std::process::exit(1);
         }
     } else if let Some(ref _matches) = matches.subcommand_matches("update") {
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        if let Err(e) = rt.block_on(handle_update()) {
+        if let Err(e) = handle_update() {
             println!("watchdog-update error: {}", e);
             error!("watchdog-update error: {}", e);
             print_traceback(e);

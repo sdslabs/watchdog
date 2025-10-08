@@ -2,14 +2,8 @@ use std::fs;
 
 use serde_derive::Deserialize;
 use toml_edit::{value, Document};
-
+use watchdog_utils::config::KeyhouseConf;
 use crate::{constants::CONFIG_PATH, errors::*};
-
-#[derive(Deserialize, Clone)]
-pub struct KeyhouseConf {
-    pub base_url: String,
-    pub token: String,
-}
 
 #[derive(Deserialize, Clone)]
 pub struct NotifiersConf {
