@@ -2838,6 +2838,7 @@ dependencies = [
 [[package]]
 name = "watchdog_utils"
 version = "0.1.0"
+source = "git+ssh://git@github.com/sdslabs/watchdog-utils.git?branch=saturn%2Fwatchdog-utils#bfacf27067acf70a2e98acbab5e7b868fb76ce4b"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
