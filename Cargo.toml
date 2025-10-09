@@ -21,7 +21,7 @@ log = "0.4"
 fern = "0.6"
 lazy_static = "1.5.0"
 regex = "1.11.1"
-watchdog_utils = { git = "ssh://git@github.com/sdslabs/watchdog-utils.git", branch = "saturn/watchdog-utils" }
+watchdog_utils = { git = "ssh://git@github.com/satindra-r/watchdog-utils.git", branch = "saturn/watchdog-utils" }
 tokio = { version = "^1.37", features = ["rt-multi-thread"] }
 
 [[ bin ]]
