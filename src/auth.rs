@@ -32,7 +32,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
     match validate_user(&config, ssh_host_username.to_string(), ssh_key) {
         Ok(true) => {
             info!(target: LogTarget::AUTH.as_str(), "User validated by handle auth");
-            println!("{}", ssh_key);
+            println!("{ssh_key}");
             Ok(())
         }
 

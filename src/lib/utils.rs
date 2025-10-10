@@ -1,6 +1,6 @@
 use crate::{constants::HOME_DIR, errors::*, logger::LogTarget};
 use chrono::FixedOffset;
-use log::{error, info};
+use log::{debug, error, info};
 use regex::Regex;
 use std::{
     collections::HashMap,
@@ -16,10 +16,8 @@ pub fn clear_file(path: &str) -> Result<()> {
 pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
     for group in groups {
         let mut target_group = group.as_str();
-        if group == "sudo" {
-            if !group_exists("sudo") && group_exists("wheel") {
-                target_group = "wheel";
-            }
+        if group == "sudo" && !group_exists("sudo") && group_exists("wheel") {
+            target_group = "wheel";
         }
 
         if target_group != user {
@@ -29,10 +27,7 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
                 .arg(user)
                 .output()
                 .chain_err(|| {
-                    format!(
-                        "Failed to execute usermod for user {} and group {}",
-                        user, target_group
-                    )
+                    format!("Failed to execute usermod for user {user} and group {target_group}")
                 })?;
 
             if output.status.success() {
@@ -55,10 +50,8 @@ pub fn add_user_to_groups(user: &str, groups: &[String]) -> Result<()> {
 pub fn remove_user_from_groups(user: &str, groups: &[String]) -> Result<()> {
     for group in groups {
         let mut target_group = group.as_str();
-        if group == "sudo" {
-            if !group_exists("sudo") && group_exists("wheel") {
-                target_group = "wheel";
-            }
+        if group == "sudo" && !group_exists("sudo") && group_exists("wheel") {
+            target_group = "wheel";
         }
 
         if target_group != user {
@@ -68,10 +61,7 @@ pub fn remove_user_from_groups(user: &str, groups: &[String]) -> Result<()> {
                 .arg(target_group)
                 .output()
                 .chain_err(|| {
-                    format!(
-                        "Failed to execute gpasswd for user {} and group {}",
-                        user, target_group
-                    )
+                    format!("Failed to execute gpasswd for user {user} and group {target_group}")
                 })?;
 
             if output.status.success() {
@@ -114,12 +104,12 @@ pub fn create_linux_user(username: &str) -> Result<()> {
     let status = Command::new("useradd")
         .arg("-m")
         .arg("-d")
-        .arg(format!("{}/{}", HOME_DIR, username))
+        .arg(format!("{HOME_DIR}/{username}"))
         .arg("-s")
         .arg("/bin/bash")
         .arg(username)
         .status()
-        .chain_err(|| format!("Failed to run useradd command for {}", username))?;
+        .chain_err(|| format!("Failed to run useradd command for {username}"))?;
 
     if status.success() {
         info!(target: LogTarget::UPDATE.as_str(), "User {} added successfully.", username);
@@ -128,8 +118,7 @@ pub fn create_linux_user(username: &str) -> Result<()> {
         let code = status.code().unwrap_or(-1);
         error!(target: LogTarget::UPDATE.as_str(), "useradd failed for user {} with exit code {}", username, code);
         Err(Error::from(format!(
-            "useradd failed for user {} with exit code {}",
-            username, code
+            "useradd failed for user {username} with exit code {code}"
         )))
     }
 }
@@ -159,7 +148,7 @@ pub fn delete_user(user: &str) -> Result<()> {
 }
 
 pub fn update_user_bashrc(user: &str) -> Result<()> {
-    let bashrc_path = format!("{}/{}/.bashrc", HOME_DIR, user);
+    let bashrc_path = format!("{HOME_DIR}/{user}/.bashrc");
     let bashrc_lines = r#"
 # Load group-specific config [WATCHDOG]
 for group in $(id -nG "$USER"); do
@@ -221,7 +210,7 @@ fn group_exists(group: &str) -> bool {
         .map(|content| {
             content
                 .lines()
-                .any(|line| line.starts_with(&format!("{}:", group)))
+                .any(|line| line.starts_with(&format!("{group}:")))
         })
         .unwrap_or(false)
 }
@@ -233,30 +222,130 @@ pub fn user_exists(username: &str) -> bool {
     }
 }
 
+/// Attempts to find the full sudo command executed by a user using various fallback methods.
 pub fn extract_sudo_command() -> Result<String> {
-    let pid = std::process::id();
-    let status_path = format!("/proc/{}/status", pid);
+    // Method 1: SUDO_COMMAND environment variable (Primary method)
+    if let Ok(cmd) = std::env::var("SUDO_COMMAND") {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Checking Method 1 (SUDO_COMMAND env var)");
+        if !cmd.is_empty() {
+            info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 1 (SUDO_COMMAND env var)");
+            debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 found command: {}", cmd);
+            return Ok(cmd);
+        } else {
+            debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 -> SUDO_COMMAND env var was empty");
+        }
+    } else {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 -> SUDO_COMMAND env var was not set");
+    }
 
-    let parent_pid = fs::read_to_string(&status_path)?
+    // Method 2: Parse /proc filesystem to find parent sudo process
+    let pid = std::process::id();
+    debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 failed; Current PID: {}; Checking Method 2 (Parent PID cmdline)", pid);
+
+    let status_path = format!("/proc/{pid}/status");
+    let status_content =
+        fs::read_to_string(&status_path).chain_err(|| format!("Failed to read {status_path}"))?;
+
+    let parent_pid_str = status_content
         .lines()
         .find(|line| line.starts_with("PPid:"))
         .and_then(|line| line.split_whitespace().nth(1))
-        .ok_or("Could not find PPid in /proc/[pid]/status")?
+        .ok_or("Could not find PPid in /proc status")?;
+
+    let parent_pid = parent_pid_str
         .parse::<u32>()
         .chain_err(|| "Failed to parse PPid")?;
+    debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 -> Found Parent PID: {}", parent_pid);
 
-    let cmdline_path = format!("/proc/{}/cmdline", parent_pid);
-    let cmdline = fs::read(&cmdline_path)
-        .map(|bytes| {
-            bytes
-                .split(|b| *b == 0)
-                .map(|part| String::from_utf8_lossy(part).to_string())
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
-        .unwrap_or_else(|_| "UNKNOWN".to_string());
+    if let Ok(cmd) = extract_command_from_pid(parent_pid) {
+        info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 2 (Parent PID cmdline)");
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 succeeded with command: {}", cmd);
+        return Ok(cmd);
+    } else {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 -> didn't found command from parent_pid: {parent_pid}");
+    }
 
-    Ok(cmdline)
+    // Method 3: Walk up the process tree to find sudo
+    debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 failed; Checking Method 3 (Process tree walk)");
+    let mut current_pid = parent_pid;
+    for i in 0..5 {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3: Checking PID {} (level {})", current_pid, i);
+        if let Ok(cmd) = extract_command_from_pid(current_pid) {
+            info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 3 (Process tree walk at level {})", i);
+            debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3 succeeded with command: {}", cmd);
+            return Ok(cmd);
+        }
+
+        // Get parent of current process
+        let status_path = format!("/proc/{current_pid}/status");
+        if let Ok(status) = fs::read_to_string(&status_path) {
+            if let Some(line) = status.lines().find(|l| l.starts_with("PPid:")) {
+                if let Some(ppid_str) = line.split_whitespace().nth(1) {
+                    if let Ok(ppid) = ppid_str.parse::<u32>() {
+                        if ppid <= 1 {
+                            debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3: Reached PID <= 1, stopping tree walk");
+                            break;
+                        }
+                        current_pid = ppid;
+                        continue;
+                    }
+                }
+            }
+        }
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3: Failed to get PPid for {}, stopping tree walk", current_pid);
+        break;
+    }
+
+    // Method 4: Fall back to current process cmdline
+    debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3 failed. Checking Method 4 (Current process cmdline)");
+    let our_cmdline_path = format!("/proc/{pid}/cmdline");
+    let our_cmdline =
+        fs::read(&our_cmdline_path).chain_err(|| "Failed to read current process cmdline")?;
+
+    let our_args: Vec<String> = our_cmdline
+        .split(|&b| b == 0)
+        .filter(|part| !part.is_empty())
+        .map(|part| String::from_utf8_lossy(part).to_string())
+        .collect();
+
+    if !our_args.is_empty() {
+        let cmd = our_args.join(" ");
+        info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 4 (Current process cmdline)");
+        debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 4 succeeded with command: {}", cmd);
+        return Ok(cmd);
+    }
+
+    error!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: All methods failed to determine command");
+    bail!("Could not determine sudo command from any method")
+}
+
+/// Helper function to extract command from a specific PID
+fn extract_command_from_pid(pid: u32) -> Result<String> {
+    let cmdline_path = format!("/proc/{pid}/cmdline");
+    let cmdline_bytes =
+        fs::read(&cmdline_path).chain_err(|| format!("Failed to read {cmdline_path}"))?;
+
+    // Parse cmdline: arguments are separated by null bytes
+    let args: Vec<String> = cmdline_bytes
+        .split(|&b| b == 0)
+        .filter(|part| !part.is_empty())
+        .map(|part| String::from_utf8_lossy(part).to_string())
+        .collect();
+
+    if args.is_empty() {
+        bail!("Process cmdline is empty");
+    }
+
+    let process_name = args[0].split('/').next_back().unwrap_or(&args[0]);
+    if process_name == "sudo" || process_name == "pkexec" {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_command_from_pid: PID {} is 'sudo' or 'pkexec'. Returning full command.", pid);
+    } else {
+        debug!(target: LogTarget::SUDO.as_str(), "extract_command_from_pid: PID {} is not 'sudo'. Returning full command anyway.", pid);
+    }
+
+    let cmd = args.join(" ");
+    debug!(target: LogTarget::SUDO.as_str(), "extract_command_from_pid: PID {} full command: {}", pid, cmd);
+    Ok(cmd)
 }
 
 pub fn extract_diff_parts(diff_data: &str) -> Vec<(String, String, String, String)> {
@@ -317,7 +406,7 @@ mod tests {
         fs::write(&dir, "some random text")?;
 
         let s = dir.to_str().ok_or(Error::from(""))?;
-        clear_file(&s)?;
+        clear_file(s)?;
 
         let content = fs::read_to_string(s)?;
         assert_eq!(content, "");

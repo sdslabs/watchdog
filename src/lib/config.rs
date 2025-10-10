@@ -94,8 +94,8 @@ pub fn get_config_value(key: &str) -> Result<String> {
             return Err("Invalid Key passed".into());
         }
     };
-    return match val {
+    match val {
         Some(s) => Ok(String::from(s)),
         None => Err("config.toml file doesn't contain that key.".into()),
-    };
+    }
 }

@@ -28,7 +28,7 @@ pub struct CommitInfo {
 }
 
 pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<bool> {
-    let name = get_name(&config, ssh_key)?;
+    let name = get_name(config, ssh_key)?;
     info!(target: LogTarget::AUTH.as_str(), "User name: {} ,user {}", name, user);
     if name.trim() != user.trim() {
         info!(target: LogTarget::AUTH.as_str(), "User didn't match with name");
@@ -37,7 +37,7 @@ pub fn validate_user(config: &Config, user: String, ssh_key: &str) -> Result<boo
     info!(target: LogTarget::AUTH.as_str(), "User match with name");
 
     let mut hasher = Sha256::new();
-    hasher.input_str(&ssh_key);
+    hasher.input_str(ssh_key);
     let hex = hasher.result_str();
     let host = &config.hostname;
 
@@ -108,15 +108,15 @@ fn get_content_from_github_json(json_text: &str) -> Result<String> {
     let _len = str::len(encoded_content);
     let content = base64::decode(&encoded_content.trim_end())
                     .chain_err(|| "Bad Base64 Encoding. Probably GitHub is facing some issues. Check https://githubstatus.com.")?;
-    Ok(String::from_utf8(content).chain_err(|| {
+    String::from_utf8(content).chain_err(|| {
         "Bad UTF8 Encoding. Make sure the file you are trying to access is human readable."
-    })?)
+    })
 }
 
 pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
     let mut hasher = Sha256::new();
 
-    hasher.input_str(&ssh_key);
+    hasher.input_str(ssh_key);
     let hex = hasher.result_str();
 
     let client = reqwest::Client::builder()
@@ -137,12 +137,12 @@ pub fn get_name(config: &Config, ssh_key: &str) -> Result<String> {
         Ok(mut r) => {
             if r.status().is_success() {
                 let json_text = r.text()?;
-                return get_content_from_github_json(&json_text);
+                get_content_from_github_json(&json_text)
             } else {
-                return Ok(String::from("UNKNOWN"));
+                Ok(String::from("UNKNOWN"))
             }
         }
-        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {}", e))),
+        Err(e) => Err(Error::from(format!("Unknown reqwest error \n-> {e}"))),
     }
 }
 
@@ -210,10 +210,10 @@ pub fn fetch_file_names(
 ) -> Result<()> {
     let client = Client::builder().timeout(Duration::from_secs(10)).build()?;
 
-    let list_url = format!("{}/{}?ref=build", base_url, directory);
+    let list_url = format!("{base_url}/{directory}?ref=build");
     let mut response = client
         .get(&list_url)
-        .header("Authorization", format!("Bearer {}", token))
+        .header("Authorization", format!("Bearer {token}"))
         .send()?;
 
     let files: Value = response.json()?;
@@ -221,11 +221,11 @@ pub fn fetch_file_names(
     if let Some(entries) = files.as_array() {
         for entry in entries {
             if let Some(key_hash) = entry["name"].as_str() {
-                let file_url = format!("{}/{}/{}?ref=build", base_url, directory, key_hash);
+                let file_url = format!("{base_url}/{directory}/{key_hash}?ref=build");
 
                 let mut file_response = client
                     .get(&file_url)
-                    .header("Authorization", format!("Bearer {}", token))
+                    .header("Authorization", format!("Bearer {token}"))
                     .send()?;
 
                 if file_response.status().is_success() {
@@ -236,7 +236,7 @@ pub fn fetch_file_names(
                         file_json.get("encoding").and_then(|v| v.as_str()),
                     ) {
                         if encoding == "base64" {
-                            let cleaned = encoded.replace('\n', "").replace('\r', "");
+                            let cleaned = encoded.replace(['\n', '\r'], "");
                             let decoded_bytes = base64::decode(&cleaned)?;
                             let username = String::from_utf8(decoded_bytes)?.trim().to_string();
 
@@ -258,7 +258,7 @@ pub fn fetch_recent_commit(config: &Config) -> Result<String> {
         .build()?;
 
     let clean_base: &str = config.keyhouse.base_url.trim_end_matches("/contents");
-    let url = format!("{}/commits?sha=build&per_page=1", clean_base);
+    let url = format!("{clean_base}/commits?sha=build&per_page=1");
     info!(target: LogTarget::UPDATE.as_str(), "Fetching recent commit from URL: {}", url);
 
     let mut response = match client
@@ -271,8 +271,7 @@ pub fn fetch_recent_commit(config: &Config) -> Result<String> {
         Err(e) => {
             log::error!("Error sending request to GitHub: {}", e);
             return Err(Error::from(format!(
-                "Failed to send request to GitHub: {}",
-                e
+                "Failed to send request to GitHub: {e}"
             )));
         }
     };
@@ -312,7 +311,7 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
         .chain_err(|| "Failed to build HTTP client")?;
 
     let clean_base: &str = config.keyhouse.base_url.trim_end_matches("/contents");
-    let url = format!("{}/compare/{}...{}", clean_base, base, merge);
+    let url = format!("{clean_base}/compare/{base}...{merge}");
 
     info!(target: LogTarget::UPDATE.as_str(),"Fetching diff from GitHub: {}", url);
 
@@ -326,8 +325,7 @@ pub fn fetch_diff(config: &Config, base: &str, merge: &str) -> Result<String> {
         Err(e) => {
             log::error!(target: LogTarget::UPDATE.as_str(),"Error sending request to GitHub: {}", e);
             return Err(Error::from(format!(
-                "Failed to send request to GitHub: {}",
-                e
+                "Failed to send request to GitHub: {e}"
             )));
         }
     };
@@ -380,7 +378,7 @@ pub fn fetch_and_decode_file(
         .send()
         .map_err(|e| {
             log::error!(target: LogTarget::UPDATE.as_str(),"Failed to fetch file from GitHub for hash {}: {}", hash, e);
-            Error::from(format!("Failed to fetch file for hash {}: {}", hash, e))
+            Error::from(format!("Failed to fetch file for hash {hash}: {e}"))
         })?;
 
     if !file_resp.status().is_success() {
