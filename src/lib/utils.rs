@@ -1,11 +1,14 @@
-use crate::{constants::HOME_DIR, errors::*, logger::LogTarget};
+use crate::{config::Config, constants::HOME_DIR, errors::*, logger::LogTarget};
 use chrono::FixedOffset;
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
 use log::{debug, error, info};
 use regex::Regex;
 use std::{
     collections::HashMap,
     fs::{self, OpenOptions},
     io::Write,
+    path::Path,
     process::Command,
 };
 pub fn clear_file(path: &str) -> Result<()> {
@@ -390,6 +393,64 @@ pub fn extract_diff_parts(diff_data: &str) -> Vec<(String, String, String, Strin
         .into_iter()
         .map(|((proj, prov, hash), status)| (proj, prov, hash, status))
         .collect()
+}
+
+pub fn check_local_cache(config: &Config, user: &str, ssh_key: &str) -> bool {
+    let mut hasher = Sha256::new();
+    hasher.input_str(ssh_key);
+    let hex = hasher.result_str();
+
+    let cache_path = &config.cache_path;
+
+    // Check Name
+    let name_path = Path::new(cache_path).join("names").join(&hex);
+    if !name_path.exists() {
+        error!(target: LogTarget::AUTH.as_str(), "Cache Miss: Name file not found for hash {}", hex);
+        return false;
+    }
+
+    let cached_user = match fs::read_to_string(&name_path) {
+        Ok(u) => u.trim().to_string(),
+        Err(e) => {
+            error!(target: LogTarget::AUTH.as_str(), "Failed to read cache file {:?}: {}", name_path, e);
+            return false;
+        }
+    };
+
+    if cached_user != user {
+        error!(target: LogTarget::AUTH.as_str(), "Cache Mismatch: User '{}' requested, but key hash belongs to '{}'", user, cached_user);
+        return false;
+    }
+
+    // Check Access
+    let host_access_path = Path::new(cache_path).join("access").join(&config.hostname);
+    if !host_access_path.exists() {
+        error!(target: LogTarget::AUTH.as_str(), "Cache Miss: No access directory for host '{}'", config.hostname);
+        return false;
+    }
+
+    match fs::read_dir(host_access_path) {
+        Ok(entries) => {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    if entry.path().is_dir() {
+                        let hash_path = entry.path().join(&hex);
+                        if hash_path.exists() {
+                            info!(target: LogTarget::AUTH.as_str(), "Cache Hit: User '{}' has access via group {:?}", user, entry.file_name());
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            error!(target: LogTarget::AUTH.as_str(), "Cache Error: Failed to read access directory: {}", e);
+            return false;
+        }
+    }
+
+    error!(target: LogTarget::AUTH.as_str(), "Cache Miss: User '{}' found in names, but no access file found for host '{}'", user, config.hostname);
+    false
 }
 
 #[cfg(test)]

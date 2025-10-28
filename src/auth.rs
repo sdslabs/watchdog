@@ -1,12 +1,12 @@
-use lib::logger::LogTarget;
-use log::{error, info};
-use nix::unistd::{fork, ForkResult};
-
 use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
+use lib::logger::LogTarget;
 use lib::notifier;
+use lib::utils::check_local_cache;
+use log::{error, info, warn};
+use nix::unistd::{fork, ForkResult};
 
 #[cfg(feature = "auto-update")]
 use crate::update::handle_update;
@@ -43,7 +43,12 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
-                    notifier::post_ssh_summary(&config, false, &name, ssh_host_username)?;
+                    notifier::post_ssh_summary(
+                        &config,
+                        false,
+                        &name,
+                        &ssh_host_username.to_string(),
+                    )?;
                     std::process::exit(0);
                 }
                 Err(_) => println!("Fork failed"),
@@ -51,8 +56,16 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             Ok(())
         }
         Err(e) => {
-            error!(target: LogTarget::AUTH.as_str(), "Error while validating user from keyhouse");
-            Err(e).chain_err(|| "Error while validating user from keyhouse")
+            warn!(target: LogTarget::AUTH.as_str(), "Error validating from Keyhouse (GitHub): {}. Checking local cache...", e);
+
+            if check_local_cache(&config, ssh_host_username, ssh_key) {
+                info!(target: LogTarget::AUTH.as_str(), "User validated from local cache");
+                println!("{ssh_key}");
+                Ok(())
+            } else {
+                error!(target: LogTarget::AUTH.as_str(), "User not found in local cache or access denied.");
+                Err(e).chain_err(|| "Error while validating user from keyhouse and cache miss")
+            }
         }
     }
 }
