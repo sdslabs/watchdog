@@ -47,7 +47,7 @@ pub fn handle_update() -> Result<()> {
         return Ok(());
     }
 
-    let _ = fetch_file_names(
+    fetch_file_names(
         &config.keyhouse.base_url,
         "names",
         &config.keyhouse.token,
@@ -106,7 +106,7 @@ pub fn update_from_commit(config: &Config, base_commit: &str) -> Result<()> {
             return Err(e);
         }
     };
-    let diff = match fetch_diff(&config, &base_commit, &merge_commit) {
+    let diff = match fetch_diff(config, base_commit, &merge_commit) {
         Ok(diff) => {
             info!(target: LogTarget::UPDATE.as_str(), "Fetched diff: {}", diff);
             diff
@@ -125,8 +125,7 @@ pub fn update_from_commit(config: &Config, base_commit: &str) -> Result<()> {
             info!(target: LogTarget::UPDATE.as_str(), "Skipping cloud provider {} as it does not match the config hostname {}", cloud_provider, config.hostname);
             continue;
         }
-        if let Ok(Some(decoded_str)) = fetch_and_decode_file(&config, &hash, &status, &base_commit)
-        {
+        if let Ok(Some(decoded_str)) = fetch_and_decode_file(config, &hash, &status, base_commit) {
             info!(target: LogTarget::UPDATE.as_str(),"Decoded file for hash {}", hash);
             if status == "added" {
                 info!(target: LogTarget::UPDATE.as_str(),"Adding user to group...");

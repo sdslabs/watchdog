@@ -177,10 +177,10 @@ impl Notifier for Slack {
         let thread_ts = self.fetch_latest_ts()?;
         info!(target: LogTarget::WATCHDOG.as_str(), "Fetched thread timestamp: {:?}", thread_ts);
 
-        let pwd_text = format!("Attempted in :{} ", pwd);
+        let pwd_text = format!("Attempted in :{pwd} ");
         self.post_message(&pwd_text, Some(&thread_ts))?;
 
-        let cmd_text = format!("Command :{} ", cmd);
+        let cmd_text = format!("Command :{cmd} ");
         self.post_message(&cmd_text, Some(&thread_ts))?;
 
         Ok(())

@@ -128,7 +128,7 @@ fn print_traceback(e: Error) {
 
     let mut i = 1;
     for e in e.iter().skip(1) {
-        println!("[{}]: {}", i, e);
+        println!("[{i}]: {e}");
         i += 1;
     }
 }
@@ -138,7 +138,7 @@ fn main() {
     let matches = app.get_matches();
 
     init_logger().unwrap_or_else(|e| {
-        eprintln!("Logger failed to initialize: {}", e);
+        eprintln!("Logger failed to initialize: {e}");
     });
     info!(target: "watchdog", "Watchdog started.");
     if let Some(logs_matches) = matches.subcommand_matches("logs") {
@@ -172,42 +172,42 @@ fn main() {
                 handle_logs_for("watchdog", level);
             }
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("sudo") {
+    } else if let Some(_matches) = matches.subcommand_matches("sudo") {
         if let Err(e) = handle_sudo() {
-            println!("watchdog-sudo error: {}", e);
+            println!("watchdog-sudo error: {e}");
             error!("watchdog-sudo error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("su") {
+    } else if let Some(_matches) = matches.subcommand_matches("su") {
         if let Err(e) = handle_su() {
-            println!("watchdog-su error: {}", e);
+            println!("watchdog-su error: {e}");
             error!("watchdog-su error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("ssh") {
+    } else if let Some(_matches) = matches.subcommand_matches("ssh") {
         info!("SSH Command");
         if let Err(e) = handle_ssh() {
-            println!("watchdog-ssh error: {}", e);
+            println!("watchdog-ssh error: {e}");
             error!("watchdog-ssh error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("auth") {
+    } else if let Some(matches) = matches.subcommand_matches("auth") {
         let pubkey = matches.value_of("pubkey").unwrap();
         let keytype = matches.value_of("keytype").unwrap();
         let user = matches.value_of("user").unwrap();
-        let ssh_key = format!("{} {}", keytype, pubkey);
-        if let Err(e) = handle_auth(&user, &ssh_key) {
-            println!("watchdog-auth error: {}", e);
+        let ssh_key = format!("{keytype} {pubkey}");
+        if let Err(e) = handle_auth(user, &ssh_key) {
+            println!("watchdog-auth error: {e}");
             error!("watchdog-auth error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("update") {
+    } else if let Some(_matches) = matches.subcommand_matches("update") {
         if let Err(e) = handle_update() {
-            println!("watchdog-update error: {}", e);
+            println!("watchdog-update error: {e}");
             error!("watchdog-update error: {}", e);
             print_traceback(e);
             std::process::exit(1);

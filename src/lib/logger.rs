@@ -47,31 +47,22 @@ lazy_static::lazy_static! {
 }
 
 pub fn init_logger() -> Result<(), InitError> {
-    let config = read_config().map_err(|_| {
-        InitError::from(io::Error::new(
-            io::ErrorKind::Other,
-            "Could not read config",
-        ))
-    })?;
+    let config =
+        read_config().map_err(|_| InitError::from(io::Error::other("Could not read config")))?;
 
     if config.logging.debug == "false" {
         return Ok(());
     }
     let global_level = verbosity_to_level_filter(&config.logging.verbosity);
 
-    let offset = parse_offset(&config.logging.offset).map_err(|_| {
-        InitError::from(io::Error::new(
-            io::ErrorKind::Other,
-            "Invalid offset in config",
-        ))
-    })?;
+    let offset = parse_offset(&config.logging.offset)
+        .map_err(|_| InitError::from(io::Error::other("Invalid offset in config")))?;
 
     let base_dir = LOG_PATH;
     fs::create_dir_all(base_dir).map_err(|e| {
-        InitError::from(io::Error::new(
-            io::ErrorKind::Other,
-            format!("Failed to create log directory: {}", e),
-        ))
+        InitError::from(io::Error::other(format!(
+            "Failed to create log directory: {e}"
+        )))
     })?;
 
     let logger = Box::new(PerTargetLogger {
@@ -146,7 +137,7 @@ impl log::Log for PerTargetLogger {
                     loggers.insert(target.clone(), logger);
                 }
                 Err(e) => {
-                    eprintln!("Failed to create log file for {}: {}", target, e);
+                    eprintln!("Failed to create log file for {target}: {e}");
                     return;
                 }
             }
@@ -161,11 +152,11 @@ impl log::Log for PerTargetLogger {
 }
 
 pub fn handle_logs_for(component: &str, level: Option<&str>) {
-    let path = format!("{}/{}.logs", LOG_PATH, component);
+    let path = format!("{LOG_PATH}/{component}.logs");
     let path = Path::new(&path);
 
     if !path.exists() {
-        eprintln!("Log file for component '{}' does not exist.", component);
+        eprintln!("Log file for component '{component}' does not exist.");
         return;
     }
 
@@ -183,10 +174,10 @@ pub fn handle_logs_for(component: &str, level: Option<&str>) {
 
                 if let Some(ref lvl) = filter_level {
                     if level_in_line == lvl {
-                        println!("{}", line);
+                        println!("{line}");
                     }
                 } else {
-                    println!("{}", line);
+                    println!("{line}");
                 }
             }
         }
@@ -240,6 +231,6 @@ pub fn handle_logs_all(level: Option<&str>) {
     all_logs.sort_by_key(|(dt, _)| *dt);
 
     for (_, log_line) in all_logs {
-        println!("{}", log_line);
+        println!("{log_line}");
     }
 }
