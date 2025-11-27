@@ -35,3 +35,20 @@ path = "src/lib/lib.rs"
 [features]
 default = []
 auto-update = []
+
+[package.metadata.deb]
+section = "admin"
+priority = "important"
+maintainer = "Kanav Gupta <kanav0610@gmail.com>"
+depends = "python3"
+extended-description = "Lightweight server access management system"
+assets = [
+    ["target/release/watchdog", "opt/watchdog/bin/watchdog", "700"],
+    ["sample.config.toml", "opt/watchdog/sample.config.toml", "600"],
+    ["install/edit-sshd-config.py", "opt/watchdog/install/edit-sshd-config.py", "755"],
+    ["install/pam-install-sudo.py", "opt/watchdog/install/pam-install-sudo.py", "755"],
+    ["install/pam-install-su.py", "opt/watchdog/install/pam-install-su.py", "755"],
+    ["install/pam-install-ssh.py", "opt/watchdog/install/pam-install-ssh.py", "755"],
+    ["install/install.sh", "opt/watchdog/install/install.sh", "755"],
+]
+maintainer-scripts = "install/"

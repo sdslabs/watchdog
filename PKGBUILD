@@ -3,7 +3,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc="Lightweight server access management system"
 arch=('x86_64')
-url="https://github.com/satindra-r/watchdog"
+url="https://github.com/sdslabs/watchdog"
 license=('MIT')
 depends=('pam' 'python' 'openssh')
 makedepends=('bash')
@@ -36,13 +36,13 @@ package() {
 
 
 	#Create empty log files
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/sudo.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/su.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/ssh.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/sudo.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/su.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/ssh.log"
-	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/auth.log"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/sudo.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/su.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/logs/ssh.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/sudo.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/su.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/ssh.logs"
+	install -Dm600 /dev/null "$pkgdir/opt/watchdog/custom-logs/auth.logs"
 	echo "Created log files"
 
 	#Copy PAM and SSH modification scripts

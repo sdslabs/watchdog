@@ -1,0 +1,23 @@
+#!/bin/bash
+
+mkdir -p /opt/watchdog/bin
+mkdir -p /opt/watchdog/logs
+touch /opt/watchdog/logs/sudo.logs
+touch /opt/watchdog/logs/su.logs
+touch /opt/watchdog/logs/ssh.logs
+mkdir -p /opt/watchdog/custom-logs
+touch /opt/watchdog/custom-logs/ssh.logs
+touch /opt/watchdog/custom-logs/sudo.logs
+touch /opt/watchdog/custom-logs/su.logs
+touch /opt/watchdog/custom-logs/auth.logs
+echo "Created log files"
+
+chown root:root /opt/watchdog/bin/watchdog
+chmod 700 /opt/watchdog/bin/watchdog
+
+ln -sf /opt/watchdog/bin/watchdog /usr/bin/watchdog
+echo "Created symlink"
+
+echo "Watchdog Installed"
+echo "Edit /opt/watchdog/sample.config.toml and save to /opt/watchdog/config.toml for setting config"
+echo "Run cd /opt/watchdog/install && sudo ./install.sh to configure PAM and SSH"
