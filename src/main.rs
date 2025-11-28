@@ -26,9 +26,9 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             SubCommand::with_name("logs")
                 .about("Fetch logs from watchdog components")
                 .arg(Arg::with_name("level")
-                        .long("level")
-                        .takes_value(true)
-                        .help("Filter log level when no component is specified (defaults to 'watchdog')"))
+                    .long("level")
+                    .takes_value(true)
+                    .help("Filter log level when no component is specified (defaults to 'watchdog')"))
                 .subcommand(
                     SubCommand::with_name("all")
                         .about("Logs from whole watchdog")
@@ -114,13 +114,13 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             .about("Get or set Watchdog configuration")
             .setting(AppSettings::ArgRequiredElseHelp)
             .arg(Arg::with_name("key")
-                 .index(1)
-                 .help("Config variable to be fetched/set"))
+                .index(1)
+                .help("Config variable to be fetched/set"))
             .arg(Arg::with_name("value")
-                 .index(2)
-                 .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
+                .index(2)
+                .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
         .subcommand(SubCommand::with_name("update"))
-            .about("Update users and groups from Keyhouse")
+        .about("Update users and groups from Keyhouse")
 }
 
 fn print_traceback(e: Error) {
@@ -198,9 +198,9 @@ fn main() {
         let pubkey = matches.value_of("pubkey").unwrap();
         let keytype = matches.value_of("keytype").unwrap();
         let user = matches.value_of("user").unwrap();
-        let ssh_key = format!("{keytype} {pubkey}");
+        let ssh_key = format!("{} {}", keytype, pubkey);
         if let Err(e) = handle_auth(user, &ssh_key) {
-            println!("watchdog-auth error: {e}");
+            println!("watchdog-auth error: {}", e);
             error!("watchdog-auth error: {}", e);
             print_traceback(e);
             std::process::exit(1);

@@ -61,7 +61,8 @@ pub fn init_logger() -> Result<(), InitError> {
     let base_dir = LOG_PATH;
     fs::create_dir_all(base_dir).map_err(|e| {
         InitError::from(io::Error::other(format!(
-            "Failed to create log directory: {e}"
+            "Failed to create log directory: {}",
+            e
         )))
     })?;
 

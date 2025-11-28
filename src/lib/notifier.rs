@@ -59,15 +59,10 @@ pub fn post_su_summary(conf: &Config, from: String, to: String) -> Result<()> {
 }
 
 /// Post summary for ssh attempts
-pub fn post_ssh_summary(
-    conf: &Config,
-    success: bool,
-    user: &String,
-    pam_user: &String,
-) -> Result<()> {
+pub fn post_ssh_summary(conf: &Config, success: bool, user: &str, pam_user: &str) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        notif.post_ssh_summary(conf, success, user.clone(), pam_user.clone())?;
+        notif.post_ssh_summary(conf, success, user.to_string(), pam_user.to_string())?;
     }
     Ok(())
 }
