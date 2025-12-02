@@ -1,6 +1,7 @@
 # Hostname of the machine running watchdog. Note that this should be
 # same as the file you create in the `hosts` directory in keyhouse.
 hostname = 'virtual-machine'
+cache_path="/opt/watchdog/cache"
 
 # Keyhouse repository configuration
 [keyhouse]

@@ -1,9 +1,15 @@
 use std::fs;
 
-use crate::{constants::CONFIG_PATH, errors::*};
 use serde_derive::Deserialize;
 use toml_edit::{value, Document};
-use watchdog_utils_II::config::KeyhouseConf;
+
+use crate::{constants::CONFIG_PATH, errors::*};
+
+#[derive(Deserialize, Clone)]
+pub struct KeyhouseConf {
+    pub base_url: String,
+    pub token: String,
+}
 
 #[derive(Deserialize, Clone)]
 pub struct NotifiersConf {
@@ -24,6 +30,13 @@ pub struct Config {
     pub keyhouse: KeyhouseConf,
     pub notifiers: NotifiersConf,
     pub logging: LoggingConf,
+    
+    #[serde(default = "default_cache_path")]
+    pub cache_path: String,
+}
+
+fn default_cache_path() -> String {
+    "/opt/watchdog/cache".to_string()
 }
 
 pub fn read_config() -> Result<Config> {
@@ -62,6 +75,9 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "logging.verbosity" => {
             doc["logging"]["verbosity"] = value(val);
         }
+        "cache_path" => {
+             doc["cache_path"] = value(val);
+        }
         _ => {
             return Err("Invalid Key passed".into());
         }
@@ -84,6 +100,7 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "logging.debug" => doc["logging"]["debug"].as_str(),
         "logging.offset" => doc["logging"]["offset"].as_str(),
         "logging.verbosity" => doc["logging"]["verbosity"].as_str(),
+        "cache_path" => doc["cache_path"].as_str(),
         _ => {
             return Err("Invalid Key passed".into());
         }

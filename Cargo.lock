@@ -2832,7 +2832,23 @@ dependencies = [
  "tokio 1.47.1",
  "toml 0.5.11",
  "toml_edit 0.1.5",
+ "watchdog_utils",
  "watchdog_utils_II",
+]
+
+[[package]]
+name = "watchdog_utils"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "clap 4.5.48",
+ "log",
+ "regex",
+ "reqwest 0.12.23",
+ "serde",
+ "serde_json",
+ "toml 0.8.23",
 ]
 
 [[package]]
