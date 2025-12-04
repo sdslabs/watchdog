@@ -47,7 +47,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                         &config,
                         false,
                         &name,
-                        &ssh_host_username.to_string(),
+                        ssh_host_username,
                     )?;
                     std::process::exit(0);
                 }
