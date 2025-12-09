@@ -417,10 +417,10 @@ mod tests {
     fn parse_offset_test() -> Result<()> {
         let offset_str = "+05:30";
         let offset = parse_offset(offset_str)?;
-        assert_eq!(offset, FixedOffset::east(19800));
+        assert_eq!(offset, FixedOffset::east_opt(19800).unwrap());
         let offset_str = "-05:30";
         let offset = parse_offset(offset_str)?;
-        assert_eq!(offset, FixedOffset::west(19800));
+        assert_eq!(offset, FixedOffset::west_opt(19800).unwrap());
         Ok(())
     }
 }

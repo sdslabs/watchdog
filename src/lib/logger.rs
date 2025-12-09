@@ -196,7 +196,7 @@ pub fn handle_logs_all(level: Option<&str>) {
             if let Ok(file) = fs::File::open(entry.path()) {
                 let reader = io::BufReader::new(file);
 
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     if let Some((timestamp_str, rest)) = line.split_once(' ') {
                         let full_ts = timestamp_str.to_string()
                             + " "

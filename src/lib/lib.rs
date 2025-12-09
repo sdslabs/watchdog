@@ -10,6 +10,7 @@ pub mod utils;
 #[macro_use]
 extern crate error_chain;
 
+#[allow(unexpected_cfgs)]
 pub mod errors {
     error_chain! {
         foreign_links {

@@ -43,12 +43,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             match fork() {
                 Ok(ForkResult::Parent { .. }) => {}
                 Ok(ForkResult::Child) => {
-                    notifier::post_ssh_summary(
-                        &config,
-                        false,
-                        &name,
-                        ssh_host_username,
-                    )?;
+                    notifier::post_ssh_summary(&config, false, &name, ssh_host_username)?;
                     std::process::exit(0);
                 }
                 Err(_) => println!("Fork failed"),
