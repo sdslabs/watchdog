@@ -2,7 +2,7 @@ use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::logger::LogTarget;
-use watchdog_utils_II::config::{Config as UtilsConfig, KeyhouseConf as UtilsKeyhouseConf};
+use watchdog_utils::config::{Config as UtilsConfig, KeyhouseConf as UtilsKeyhouseConf};
 use watchdog_utils_II::services::github_service;
 
 pub fn handle_update() -> Result<()> {
