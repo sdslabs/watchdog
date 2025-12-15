@@ -15,7 +15,7 @@ pub fn handle_update() -> Result<()> {
     let utils_config = UtilsConfig::new(
         config.hostname.clone(),
         utils_keyhouse,
-        config.cache_path.to_string_lossy().to_string(),
+        config.cache_path.clone(),
     );
     let rt = tokio::runtime::Runtime::new()?;
     if let Err(e) = rt.block_on(github_service::process_update_request(

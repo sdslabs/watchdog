@@ -5,7 +5,7 @@ use lib::keyhouse::{get_name, validate_user};
 use lib::logger::LogTarget;
 use lib::notifier;
 use lib::utils::check_local_cache;
-use log::{error, info, warn};
+use log::{info};
 use nix::unistd::{fork, ForkResult};
 
 #[cfg(feature = "auto-update")]
@@ -35,36 +35,29 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
             println!("{ssh_key}");
             Ok(())
         }
-
-        Ok(false) => {
-            info!(target: LogTarget::AUTH.as_str(), "User not validated");
-            let name = get_name(&config, ssh_key)?;
-            info!(target: LogTarget::AUTH.as_str(), "Logging failed");
-            match fork() {
-                Ok(ForkResult::Parent { .. }) => {}
-                Ok(ForkResult::Child) => {
-                    notifier::post_ssh_summary(
-                        &config,
-                        false,
-                        &name,
-                        &ssh_host_username.to_string(),
-                    )?;
-                    std::process::exit(0);
-                }
-                Err(_) => println!("Fork failed"),
-            }
-            Ok(())
-        }
-        Err(e) => {
-            warn!(target: LogTarget::AUTH.as_str(), "Error validating from Keyhouse (GitHub): {}. Checking local cache...", e);
-
+        Ok(false) | Err(_) => {
+            // Try local cache first on validation failure or mismatch
             if check_local_cache(&config, ssh_host_username, ssh_key) {
                 info!(target: LogTarget::AUTH.as_str(), "User validated from local cache");
                 println!("{ssh_key}");
                 Ok(())
             } else {
-                error!(target: LogTarget::AUTH.as_str(), "User not found in local cache or access denied.");
-                Err(e).chain_err(|| "Error while validating user from keyhouse and cache miss")
+                info!(target: LogTarget::AUTH.as_str(), "User not validated");
+                let name = get_name(&config, ssh_key)?;
+                match fork() {
+                    Ok(ForkResult::Parent { .. }) => {}
+                    Ok(ForkResult::Child) => {
+                        notifier::post_ssh_summary(
+                            &config,
+                            false,
+                            &name,
+                            &ssh_host_username.to_string(),
+                        )?;
+                        std::process::exit(0);
+                    }
+                    Err(_) => println!("Fork failed"),
+                }
+                Err(anyhow::anyhow!("User validation failed and not found in cache"))
             }
         }
     }
