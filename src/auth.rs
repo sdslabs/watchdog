@@ -1,5 +1,5 @@
 use lib::config::read_config;
-use lib::errors::*;
+use lib::errors::{* , Error};
 use lib::init::init;
 use lib::keyhouse::{get_name, validate_user};
 use lib::logger::LogTarget;
@@ -57,7 +57,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
                     }
                     Err(_) => println!("Fork failed"),
                 }
-                Err(anyhow::anyhow!("User validation failed and not found in cache"))
+                Err(Error::from("User validation failed and not found in cache"))
             }
         }
     }
