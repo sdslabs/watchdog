@@ -1,7 +1,7 @@
-use std::fs;
-
 use crate::{constants::CONFIG_PATH, errors::*};
 use serde_derive::Deserialize;
+use std::fs;
+use std::path::PathBuf;
 use toml_edit::{value, Document};
 use watchdog_utils_II::config::KeyhouseConf;
 
@@ -24,6 +24,14 @@ pub struct Config {
     pub keyhouse: KeyhouseConf,
     pub notifiers: NotifiersConf,
     pub logging: LoggingConf,
+    #[serde(default = "Config::default_cache_path")]
+    pub cache_path: PathBuf,
+}
+
+impl Config {
+    pub fn default_cache_path() -> PathBuf {
+        PathBuf::from("/opt/watchdog/cache")
+    }
 }
 
 pub fn read_config() -> Result<Config> {
@@ -62,6 +70,9 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "logging.verbosity" => {
             doc["logging"]["verbosity"] = value(val);
         }
+        "cache_path" => {
+            doc["cache_path"] = value(val);
+        }
         _ => {
             return Err("Invalid Key passed".into());
         }
@@ -84,6 +95,7 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "logging.debug" => doc["logging"]["debug"].as_str(),
         "logging.offset" => doc["logging"]["offset"].as_str(),
         "logging.verbosity" => doc["logging"]["verbosity"].as_str(),
+        "cache_path" => doc["cache_path"].as_str(),
         _ => {
             return Err("Invalid Key passed".into());
         }

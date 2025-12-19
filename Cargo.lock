@@ -2837,9 +2837,9 @@ dependencies = [
 
 [[package]]
 name = "watchdog_utils_II"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "134d93a50d849faf20ef78d75c5185c3d6e616d7686d631932cca6a026381706"
+checksum = "4bcd8ec0cd90739b37e319635dfc3b7625447f81b8c764459a22d134540a7402"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
