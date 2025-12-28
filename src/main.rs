@@ -119,7 +119,11 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             .arg(Arg::with_name("value")
                 .index(2)
                 .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
-        .subcommand(SubCommand::with_name("update"))
+        .subcommand(SubCommand::with_name("update").arg(Arg::with_name("all")
+            .short("a")
+            .long("all")
+            .help("Update all users from scratch")
+            .takes_value(false)))
         .about("Update users and groups from Keyhouse")
 }
 
@@ -205,8 +209,12 @@ fn main() {
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(_matches) = matches.subcommand_matches("update") {
-        if let Err(e) = handle_update() {
+    } else if let Some(update_matches) = matches.subcommand_matches("update") {
+        let mut should_update_all_users = false;
+        if update_matches.is_present("all") {
+            should_update_all_users = true;
+        }
+        if let Err(e) = handle_update(should_update_all_users) {
             println!("watchdog-update error: {e}");
             error!("watchdog-update error: {}", e);
             print_traceback(e);

@@ -18,7 +18,7 @@ pub fn handle_auth(ssh_host_username: &str, ssh_key: &str) -> Result<()> {
 
     #[cfg(feature = "auto-update")]
     {
-        match handle_update() {
+        match handle_update(true) {
             Ok(_) => {
                 info!(target: LogTarget::UPDATE.as_str(), "Update handled successfully");
             }
