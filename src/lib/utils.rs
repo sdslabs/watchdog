@@ -228,12 +228,14 @@ pub fn user_exists(username: &str) -> bool {
 /// Attempts to find the full sudo command executed by a user using various fallback methods.
 pub fn extract_sudo_command() -> Result<String> {
     // Method 1: SUDO_COMMAND environment variable (Primary method)
+    let mut slack_msg = String::new();
+
     if let Ok(cmd) = std::env::var("SUDO_COMMAND") {
         debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Checking Method 1 (SUDO_COMMAND env var)");
         if !cmd.is_empty() {
             info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 1 (SUDO_COMMAND env var)");
             debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 found command: {}", cmd);
-            return Ok(cmd);
+            slack_msg += &format!("cmd1: {}\n", cmd);
         } else {
             debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 1 -> SUDO_COMMAND env var was empty");
         }
@@ -263,7 +265,7 @@ pub fn extract_sudo_command() -> Result<String> {
     if let Ok(cmd) = extract_command_from_pid(parent_pid) {
         info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 2 (Parent PID cmdline)");
         debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 succeeded with command: {}", cmd);
-        return Ok(cmd);
+        slack_msg += &format!("cmd2: {}\n", cmd);
     } else {
         debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 2 -> didn't found command from parent_pid: {parent_pid}");
     }
@@ -276,7 +278,7 @@ pub fn extract_sudo_command() -> Result<String> {
         if let Ok(cmd) = extract_command_from_pid(current_pid) {
             info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 3 (Process tree walk at level {})", i);
             debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 3 succeeded with command: {}", cmd);
-            return Ok(cmd);
+            slack_msg += &format!("cmd3: {}\n", cmd);
         }
 
         // Get parent of current process
@@ -315,7 +317,11 @@ pub fn extract_sudo_command() -> Result<String> {
         let cmd = our_args.join(" ");
         info!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Succeeded using Method 4 (Current process cmdline)");
         debug!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: Method 4 succeeded with command: {}", cmd);
-        return Ok(cmd);
+        slack_msg += &format!("cmd4: {}\n", cmd);
+    }
+
+    if !slack_msg.is_empty() {
+        return Ok(slack_msg);
     }
 
     error!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: All methods failed to determine command");
