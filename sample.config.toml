@@ -1,6 +1,7 @@
 # Hostname of the machine running watchdog. Note that this should be
 # same as the file you create in the `hosts` directory in keyhouse.
 hostname = 'virtual-machine'
+cache_path = 'path/to/cache'
 
 # Keyhouse repository configuration
 [keyhouse]
@@ -21,4 +22,11 @@ token = 'secret_token'
 # Make an incoming hook to your Slack workspace from this
 # app(https://slack.com/apps/A0F7XDUAZ-incoming-webhooks)
 # and paste the hook URL here. You can customize the icon and name as you like.
-slack = 'https://hooks.slack.com/services/ABCDEFGHI/ABCDEFGHI/abcdefghijklmnopqrstuvwx'
+token = 'bot_token'
+channel = 'C0123456789'
+
+# Logging
+[logging]
+debug='true'
+offset='+5:30'
+verbosity='v'
