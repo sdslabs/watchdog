@@ -130,10 +130,8 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
 fn print_traceback(e: Error) {
     println!("Traceback:");
 
-    let mut i = 1;
-    for e in e.iter().skip(1) {
+    for (i, e) in (1..).zip(e.iter().skip(1)) {
         println!("[{i}]: {e}");
-        i += 1;
     }
 }
 
