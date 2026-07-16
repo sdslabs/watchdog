@@ -21,6 +21,7 @@ Check out this blog post to know how watchdog works and design methodologies beh
 ## Features
 
 * Request SSH access to a server just by creating a PR to the Keyhouse repository.
+* Associate multiple SSH public keys with the same user.
 * Stateless and serverless. Watchdog runs on a single binary.
 * Optional server activity logs to your favourite workspace like Slack or Discord.
 * Easy Installation and Configuration
@@ -120,6 +121,19 @@ To view logs
 ```sh
 $ watchdog logs --help
 ```
+
+### Multiple SSH keys
+
+A user can register more than one public key by adding one key per line to their
+`data/keys/<username>` file in Keyhouse:
+
+```text
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICsfZlzGJSe6B5q5mEp9E2blI/xW7mW34h1xdHxFUQHs user1_mail1@sdslabs.co
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICUKyjr6icfamUc4l7tPFr82VgSf373rciLGcEGPYirv user1_mail2@sdslabs.co
+```
+
+Blank lines and lines beginning with `#` are ignored. Key comments are optional;
+Watchdog compares the key type and encoded key data.
 
 ## Development
 
