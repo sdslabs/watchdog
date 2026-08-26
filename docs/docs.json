@@ -1,0 +1,53 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Watchdog",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#6366F1",
+    "dark": "#3730A3"
+  },
+  "background": {
+    "color": {
+      "dark": "#0a0a0f"
+    }
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Introduction",
+        "pages": ["index", "setup", "server-admin-guide"]
+      },
+      {
+        "group": "How It Works",
+        "pages": [
+          "how-it-works/basic-outline",
+          "how-it-works/keyhouse-sync",
+          "how-it-works/internals"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "SDSLabs",
+        "href": "https://sdslabs.co"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "GitHub",
+      "href": "https://github.com/sdslabs/watchdog"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/sdslabs/watchdog",
+      "website": "https://sdslabs.co"
+    }
+  }
+}

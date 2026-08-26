@@ -1,0 +1,131 @@
+---
+title: "Watchdog Internals"
+description: "CLI usage, what Watchdog tracks, and how it works under the hood."
+---
+
+As mentioned earlier, Watchdog is a Rust binary installed on the server which communicates with the Keyhouse repository to check for privileges, and notifies of any login attempts, successful or otherwise, through Slack messages. As an added feature, we also notify you about any administrative activities like `sudo`.
+
+It works by plugging callbacks into the commands `sudo`, `su`, and `ssh` using [Pluggable Authentication Modules](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/managing_smart_cards/pluggable_authentication_modules) (PAM) (to send messages to Slack) and the [SSH Authorized Keys Command](https://scalesec.com/blog/just-in-time-ssh-provisioning/) (to authenticate with Keyhouse).
+
+## Watchdog CLI Usage
+
+The `watchdog` binary is located at:
+
+```
+/opt/watchdog/bin
+```
+
+To run any command, navigate to that folder and use `sudo ./watchdog <command>`.
+
+### 1. View Logs
+
+```bash
+sudo ./watchdog logs all --level info
+```
+
+- View logs for all parts of Watchdog (`ssh`, `sudo`, `su`, etc.).
+- You can replace `info` with `warn` or `error` to filter severity.
+- This helps debug or audit what Watchdog is doing.
+
+### 2. Update Users and Groups
+
+```bash
+sudo ./watchdog update
+```
+
+- Syncs users and groups from the Keyhouse system into your server, by fetching and applying the diff since the last sync (see [Keyhouse Sync](/how-it-works/keyhouse-sync) for how this works).
+- Should be run periodically via cron, unless Watchdog was built with the `auto-update` feature (in which case this happens automatically on every SSH login).
+- Pass `--all` to force a full resync instead of an incremental diff:
+
+```bash
+sudo ./watchdog update --all
+```
+
+### 3. Help
+
+You can always view available commands and flags by running:
+
+```bash
+sudo ./watchdog help
+```
+
+Example output:
+
+```
+Watchdog 0.1.0
+SDSLabs <contact@sdslabs.co>
+Update users and groups from Keyhouse
+
+USAGE:
+    watchdog [SUBCOMMAND]
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+SUBCOMMANDS:
+    auth      Authorizes users based on Keyhouse repository
+    config    Get or set Watchdog configuration
+    help      Prints help for any subcommand
+    logs      Fetch logs from watchdog components
+    ssh       Handles PAM SSH events
+    su        Handles PAM su events
+    sudo      Handles PAM sudo events
+    update    Update users and groups from Keyhouse
+```
+
+### Optional: Add to `$PATH`
+
+To use `watchdog` globally without navigating every time:
+
+```bash
+sudo ln -s /opt/watchdog/bin/watchdog /usr/local/bin/watchdog
+```
+
+Now you can simply do:
+
+```bash
+sudo watchdog logs all --level info
+```
+
+## What Does Watchdog Track?
+
+### 1. Auth Check (`handle_auth`)
+
+- When someone tries to log in with an SSH key, Watchdog checks if the key is valid.
+- If it is, everything goes smoothly.
+- If not, it sends an alert saying, "user tried to log in on user\@server"
+
+![Auth check Slack alert](/images/Lbike9zRCmv0P7h4i4Li.png)
+
+### 2. SSH Session (`handle_ssh`)
+
+- When a user starts an SSH session (remote login), Watchdog notices.
+- It logs the event and sends a simple report: "User X logged in on user\@server"
+
+![SSH session Slack alert](/images/qdZ9SsgwegkaeTzws3qR.png)
+
+### 3. Sudo Use (`handle_sudo`)
+
+- When someone uses `sudo` to run admin commands, Watchdog tracks it.
+- It logs the user's name and the folder they were in, and also, the command they used, in a thread.
+- Then it sends a message: "user attempted sudo on server".
+
+![Sudo use Slack alert](/images/002ZtmxvKSVtEgP9Mad0.png)
+
+### 4. Su Command (`handle_su`)
+
+- When a user switches to another user using `su`, Watchdog catches that too.
+- It tracks who switched to whom.
+- Then it sends a simple message: "User A switched to user B."
+
+![Su command Slack alert](/images/NTKepUATDDfl0Mk2Mi8Q.png)
+
+![Su command Slack alert thread](/images/9pF4RgIjdAn39Su6Q1J3.png)
+
+## How does it work?
+
+- It uses environment variables like `PAM_USER`, `PAM_TYPE`, and `PAM_RUSER` to know who did what.
+- It reads some settings from a config file.
+- It uses a notifier to send simple messages (like alerts).
+- It uses forking to run some tasks in the background without blocking other processes.

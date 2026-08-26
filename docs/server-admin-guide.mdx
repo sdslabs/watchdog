@@ -1,0 +1,28 @@
+---
+title: "Server Admin Guide"
+description: "Linux user and group management practices that form the foundation for Watchdog."
+---
+
+To ensure secure and maintainable access control across projects, the following practices establish a clean separation of permissions using Linux user and group management — forming the foundation needed for effective use of Watchdog.
+
+For creating a project on your server, you need to do the following:
+
+```bash
+# Create a user (automatically creates a group and a home directory)
+sudo useradd -m project
+
+# Change group ownership of the folder
+sudo chown -R :project /home/project
+
+# Give group read/write/execute access
+sudo chmod -R 770 /home/project
+
+# Setgid to make new files inherit the group
+sudo chmod g+s /home/project
+```
+
+Here, we have project groups and users for all members of your organization. In order to give a user access to a project, you add them to the respective project group.
+
+### To give sudo access
+
+You can give sudo access to members on a server by adding `server|sudo` in the `/hosts/user` file.

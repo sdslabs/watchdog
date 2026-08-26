@@ -1,0 +1,30 @@
+---
+title: "Watchdog"
+description: "Server access management made simple: automated user access, GitHub-synced configuration, and real-time Slack notifications."
+---
+
+## Introduction
+
+In any organization, especially those managing critical systems, it's important to control who can access which servers—and to keep a record of what they do once they're in. Our server access management system makes this easy by automating user access, keeping everything up-to-date through a GitHub repository, and sending real-time notifications when important actions happen.
+
+The system is made up of two lightweight and easy-to-understand tools: **Keyhouse** and **Watchdog**. Together, they help your team manage access smoothly, securely, and with full visibility into all server activity. Whether it's onboarding new team members or auditing server usage, everything is handled in a clean, automated way.
+
+## Overview
+
+### 1. Keyhouse: A central database for easy access control
+
+Keyhouse is the central database that allows access control. It stores SSH keys of all members in the `keys/` folder. Access rules for different servers and projects are organized in the `hosts/` folder.
+
+Whenever access needs to change (for example, when someone joins or leaves a project), updates are made here and synced automatically.
+
+### 2. Watchdog: Access Syncing and Real-Time Privilege Monitoring
+
+Watchdog is a Rust binary installed on each server. It keeps the server's users and groups in sync with Keyhouse — either automatically on every SSH login, or periodically via a scheduled `watchdog update` — by polling the Keyhouse repository and applying commit diffs through the [`watchdog_utils_II`](https://github.com/sdslabs/watchdog-utils) crate.
+
+It also keeps an eye on what's happening on your servers. It watches for key actions like people logging in via SSH, users running sudo commands, and anyone switching users using `su`.
+
+When any of these events occur, Watchdog sends real-time alerts to a **Slack channel**, helping teams stay informed and ensuring there's a clear record of privileged activity.
+
+---
+
+Together, these two tools give you full control over who can access your servers, what they can do, and when they do it — with everything being tracked and updated automatically. Simple to use and easy to maintain.

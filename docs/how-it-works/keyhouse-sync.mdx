@@ -1,0 +1,48 @@
+---
+title: "Keyhouse Sync"
+description: "How Watchdog pulls access changes from Keyhouse and applies them to the server, without a separate webhook server."
+---
+
+### What is Keyhouse?
+
+What do we do if we cannot ensure a database that is almost always live? Well, host your database as a GitHub repository ;) That's what we did, and it has worked very well.
+
+The first thing to look at should be the structure of Keyhouse.
+
+![Keyhouse repository structure](/images/hLr8AsappF8wN1ZeS0Qa.png)
+
+*tl;dr* the folder `keys` contains the SSH keys of all members, and the `hosts` folder contains a file for each server which contains access configuration.
+
+Let's have a look at Keyhouse.
+
+![Keyhouse folder layout](/images/syWYibiENOqE5LomRogh.png)
+
+To register yourself as a part of an organization (and get a username), add your SSH key to the file `data/keys/<name>`. Make sure the name you choose doesn't collide with someone else's.
+
+![Adding an SSH key to Keyhouse](/images/b7QR3YLfEJjkAZvVbS8g.png)
+
+To gain access to the group `study` in the server called `ratchet`, we edit the file `data/hosts/name` to add the line `ratchet|study` at the bottom, open a pull request
+
+![Adding an access line to a hosts file](/images/j9pkX8U0AI2YFxc2nECm.png)
+
+and get it merged by an admin.
+
+![Pull request merged by an admin](/images/zecpok86Cyj26gmOaAmo.png)
+
+As simple as that! You got access to group `study` on server `ratchet` (no, not really, we won't give you access to our ratchet).
+
+### How does Watchdog sync with Keyhouse?
+
+Watchdog pulls changes from Keyhouse itself — there's no separate webhook server to run or expose. This logic lives in the [`watchdog_utils_II`](https://github.com/sdslabs/watchdog-utils) crate, a small library published to crates.io with its own CI (build, clippy, formatting, and Docker-based integration tests), which Watchdog depends on directly.
+
+Let's say you added your key to the `keys/` folder, and gave yourself access to `ratchet|study` as above by adding this line to the `hosts/name` file, and it got merged into the `build` branch. From here, Watchdog can be told to pick up the change in three different ways — see [Setup](/setup#keeping-watchdog-in-sync-with-keyhouse) for exactly what triggers each one and how to set it up.
+
+Whichever way it's triggered, the sync works the same way under the hood:
+
+1. Watchdog remembers the last commit it synced from, stored in `/opt/watchdog/bin/base_commit.txt`.
+2. It fetches the latest commit on the `build` branch and asks GitHub for the diff between the last-known commit and this one.
+3. It parses that diff for changes under `access/<server>/<group>/<user-hash>` (group membership) and `names/<user-hash>` (username changes), and only acts on the ones relevant to this server's hostname.
+4. For each relevant change it creates the user (if needed), adds or removes them from the right Unix group, and deletes the user entirely once they have no groups left on this server.
+5. It writes the new commit hash back to `base_commit.txt`, so the next sync only needs to look at what changed since.
+
+If `base_commit.txt` is missing, or the diff/commit fetch fails (for example, a transient GitHub API error), Watchdog falls back to a **full sync**: it re-downloads the entire access structure from Keyhouse and reconciles every user and group on the server from scratch, rather than relying on an incremental diff. You can also trigger a full sync explicitly at any time with `sudo watchdog update --all`.

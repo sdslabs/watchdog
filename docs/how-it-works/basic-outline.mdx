@@ -1,0 +1,24 @@
+---
+title: "Basic Outline"
+description: "How users, groups, Keyhouse, Scout, and Watchdog fit together."
+---
+
+### Users and Groups on the Server
+
+On your server:
+
+- **Each team member** gets a **user**.
+- **Each project** has a **group**.
+- Access to a project is managed by adding users to the right group.
+
+This makes it easy to manage permissions and keep things organized.
+
+### Keyhouse
+
+We don't use a live database for access control. Instead, we use a **GitHub repository known as `keyhouse` as the database**. It's fast, versioned, and easy to understand.
+
+### Watchdog
+
+Watchdog is a Rust binary installed on the server which communicates with the Keyhouse repository to check for privileges, and notifies of any login attempts, successful or otherwise, through Slack messages. As an added feature, we also notify you about any administrative activities like `sudo`.
+
+It also keeps the server's users and groups in sync with Keyhouse itself, by polling the repository and applying commit diffs — either automatically on every SSH login (with the `auto-update` build feature) or via a periodic `watchdog update`.

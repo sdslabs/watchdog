@@ -1,0 +1,165 @@
+---
+title: "Setup"
+description: "Step-by-step guide to setting up Keyhouse, Scout, and Watchdog."
+---
+
+<Note>This is tested only to work on Linux.</Note>
+
+## Step 1: Set Up Keyhouse
+
+1. **Create your organization's Keyhouse repository:**
+
+[Create your organization's Keyhouse repository](https://github.com/new?template_name=keyhouse-template&template_owner=sdslabs)
+
+## Step 2: Set Up Watchdog for Access Syncing and Logging
+
+Watchdog talks to Keyhouse directly (via the [`watchdog_utils_II`](https://github.com/sdslabs/watchdog-utils) crate) to keep your server's users and groups in sync — there's no separate webhook server to run.
+
+1. **Create a Slack app** ([api.slack.com/quickstart](https://api.slack.com/quickstart))
+
+Give the following scopes:
+
+![Slack app OAuth scopes](/images/EN5IfCgy1zzU3CezmiOn.png)
+
+Now, add the Slack app to your notification channel, say `#watchdog`.
+
+2. **Clone Watchdog and build:**
+
+```bash
+git clone git@github.com:sdslabs/watchdog.git
+cd watchdog
+cargo build --release
+```
+
+<Note>
+  Whether you need the `--features auto-update` flag here depends on which
+  sync method you pick below — see [Keeping Watchdog in Sync with
+  Keyhouse](#keeping-watchdog-in-sync-with-keyhouse).
+</Note>
+
+3. **Update the `config.toml`** according to the provided `sample.config.toml`.
+
+```bash
+cp sample.config.toml config.toml
+```
+
+4. **Run the install script:**
+
+```bash
+cd install
+sudo ./install.sh
+```
+
+This will:
+
+- Set up logging hooks for `ssh`, `sudo`, and `su` commands
+- Start a background service to report activity to **Slack**
+
+5. **Run an initial full sync**, so the server has users and groups provisioned before you pick an ongoing sync method:
+
+```bash
+sudo watchdog update --all
+```
+
+## Keeping Watchdog in Sync with Keyhouse
+
+Once Keyhouse has your initial access rules, something needs to keep telling Watchdog when those rules change. There are three ways to do that — pick one (or combine them: for example, CI for near-instant sync plus a daily cron `watchdog update --all` as a safety net).
+
+| Method | Runs sync... | Setup effort | Notes |
+|---|---|---|---|
+| **CI (self-hosted runner)** | The moment a Keyhouse change is merged and built | Register a runner + add a workflow | Fastest, fully automated, no polling |
+| **`auto-update` build feature** | Only on the *next* SSH login attempt after a change | One build flag | No extra infra, but there's a delay until someone connects |
+| **Manual / cron `watchdog update`** | Whenever you run it, or on your cron schedule | One cron entry | Simple, but sync lag equals your cron interval |
+
+### Option A: CI (fully automated, recommended)
+
+This is the closest thing to instant sync: a GitHub Actions workflow, running on a **self-hosted runner on the server itself**, executes `sudo watchdog update` the moment your Keyhouse repository finishes building. No polling delay, no login required to trigger it.
+
+<Note>
+  You do **not** need the `auto-update` build feature for this option — build
+  Watchdog normally (`cargo build --release`).
+</Note>
+
+1. **Register this server as a self-hosted runner** for your Keyhouse repository:
+
+   - In your Keyhouse repo on GitHub, go to **Settings → Actions → Runners → New self-hosted runner**.
+   - Pick **Linux**, and copy the `download` and `config` commands GitHub shows you — they look like this (use the exact ones GitHub gives you, since the version and token are unique to your repo):
+
+     ```bash
+     mkdir actions-runner && cd actions-runner
+     curl -o actions-runner-linux-x64.tar.gz -L <download-url-from-github>
+     tar xzf ./actions-runner-linux-x64.tar.gz
+     ./config.sh --url https://github.com/<your-org>/<your-keyhouse-repo> --token <token-from-github>
+     ```
+
+   - Install and start it as a service, so it survives reboots and keeps listening for jobs:
+
+     ```bash
+     sudo ./svc.sh install
+     sudo ./svc.sh start
+     ```
+
+2. **Add a workflow to your Keyhouse repository** that runs on this runner whenever a build completes. Create `.github/workflows/scout.yml` in your Keyhouse repo:
+
+   ```yaml
+   name: Scout
+
+   on:
+     workflow_run:
+       workflows: ["Build and Deploy"]
+       types:
+         - completed
+
+   jobs:
+     scout:
+       if: ${{ github.event.workflow_run.conclusion == 'success' }}
+       runs-on: self-hosted
+       steps:
+         - name: Trigger local service
+           run: sudo /opt/watchdog/bin/watchdog update
+   ```
+
+   `"Build and Deploy"` here must match the name of the workflow in your Keyhouse repo that builds and pushes to the `build` branch (Keyhouse's own template ships one by this name — check your repo's `.github/workflows/main.yml` if you've renamed it).
+
+3. **Commit and push** this workflow file to your Keyhouse repo's default branch. From now on, every successful Keyhouse build will trigger `watchdog update` on this server automatically.
+
+<Info>
+  A self-hosted runner executes whatever a workflow in that repository tells
+  it to, with the permissions of the user it runs as (here, enough to run
+  `sudo watchdog update`). Only register runners against repositories you
+  trust and control access to — this is safe for a private, admin-gated
+  Keyhouse repo, but is **not** something you'd want on a repo that accepts
+  contributions from untrusted forks.
+</Info>
+
+### Option B: `auto-update` build feature
+
+Build Watchdog with the feature flag:
+
+```bash
+cargo build --release --features auto-update
+```
+
+With this build, every time sshd needs to check an SSH key during a login attempt, Watchdog runs a full Keyhouse sync **first**, then validates the key. There's no separate service or schedule to configure — but note the sync only happens when triggered by an SSH login attempt, so a Keyhouse change won't take effect on this server until the *next* time someone tries to connect. If your servers see infrequent SSH traffic, this could mean a stale access list for a while.
+
+### Option C: Manual / cron `watchdog update`
+
+Run this whenever you want to pull the latest Keyhouse state:
+
+```bash
+sudo watchdog update
+```
+
+Or force a full resync instead of an incremental diff:
+
+```bash
+sudo watchdog update --all
+```
+
+To automate it, add a cron entry, for example to sync every 5 minutes:
+
+```bash
+*/5 * * * * root /usr/bin/watchdog update
+```
+
+This is the simplest option to reason about, but access changes won't apply until the next scheduled run — so your sync lag is exactly however often you've scheduled it.
