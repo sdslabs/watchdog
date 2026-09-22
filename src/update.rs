@@ -12,7 +12,12 @@ pub fn handle_update(update_all: bool) -> Result<()> {
         base_url: config.keyhouse.base_url.clone(),
         token: config.keyhouse.token.clone(),
     };
-    let utils_config = UtilsConfig::new(config.hostname.clone(), utils_keyhouse, config.cache_path);
+    let utils_config = UtilsConfig::new(
+        config.hostname.clone(),
+        utils_keyhouse,
+        config.cache_path,
+        config.create_user_dir,
+    );
     let rt = tokio::runtime::Runtime::new()?;
     if let Err(e) = rt.block_on(async {
         if update_all {
