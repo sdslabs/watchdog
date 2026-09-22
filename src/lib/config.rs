@@ -26,11 +26,17 @@ pub struct Config {
     pub logging: LoggingConf,
     #[serde(default = "Config::default_cache_path")]
     pub cache_path: PathBuf,
+    #[serde(default = "Config::default_create_user_dir")]
+    pub create_user_dir: bool,
 }
 
 impl Config {
     pub fn default_cache_path() -> PathBuf {
         PathBuf::from("/opt/watchdog/cache")
+    }
+
+    pub fn default_create_user_dir() -> bool {
+        false
     }
 }
 
@@ -73,6 +79,9 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "cache_path" => {
             doc["cache_path"] = value(val);
         }
+        "create_user_dir" => {
+            doc["create_user_dir"] = value(val == "true");
+        }
         _ => {
             return Err("Invalid Key passed".into());
         }
@@ -86,6 +95,13 @@ pub fn get_config_value(key: &str) -> Result<String> {
     let doc = toml_str.parse::<Document>().chain_err(|| {
         "Invalid TOML file. Please reverify if /opt/watchdog/config.toml is a valid toml file."
     })?;
+    if key == "create_user_dir" {
+        return match doc["create_user_dir"].as_bool() {
+            Some(enabled) => Ok(enabled.to_string()),
+            None => Err("config.toml file doesn't contain that key.".into()),
+        };
+    }
+
     let val = match key {
         "hostname" => doc["hostname"].as_str(),
         "keyhouse.base_url" => doc["keyhouse"]["base_url"].as_str(),

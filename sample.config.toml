@@ -3,6 +3,11 @@
 hostname = 'virtual-machine'
 cache_path = 'path/to/cache'
 
+# When true, also create home directories under /opt/watchdog/users and
+# archive them when users are removed. Linux accounts are always created
+# and deleted regardless of this flag.
+create_user_dir = false
+
 # Keyhouse repository configuration
 [keyhouse]
 
