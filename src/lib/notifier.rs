@@ -1,13 +1,13 @@
 extern crate reqwest;
 extern crate serde_json;
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use reqwest::header::CONTENT_TYPE;
-use serde_json::json;
-
 use crate::config::Config;
 use crate::errors::*;
+use crate::logger::LogTarget;
+use log::info;
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE};
+use reqwest::Client;
+use serde_json::json;
 
 /// Notifier is an abstract trait to post messages to webhook
 ///
@@ -18,12 +18,14 @@ pub trait Notifier {
     fn new(conf: &Config) -> Option<Self>
     where
         Self: Sized;
-    /// URL returns the webhook url of the Notifier
-    fn url(&self) -> &str;
-    /// Send request with message
-    fn make_request(&self, json: String) -> Result<()>;
     /// Post summary for sudo attempts
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()>;
+    fn post_sudo_summary(
+        &self,
+        conf: &Config,
+        pam_ruser: String,
+        pwd: String,
+        cmd: String,
+    ) -> Result<()>;
     /// Post summary for su attempts
     fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()>;
     /// Post summary for ssh attempts
@@ -32,18 +34,17 @@ pub trait Notifier {
         conf: &Config,
         success: bool,
         user: String,
-        pam_ruser: String,
+        pam_user: String,
     ) -> Result<()>;
 }
 
 struct GlobalNotifier(Vec<Box<dyn Notifier>>);
 
 /// Post summary for sudo attempts
-pub fn post_sudo_summary(conf: &Config, pam_ruser: String) -> Result<()> {
+pub fn post_sudo_summary(conf: &Config, pam_ruser: String, pwd: String, cmd: String) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        let pam_ruser_copy = String::from(&pam_ruser);
-        notif.post_sudo_summary(conf, pam_ruser_copy)?
+        notif.post_sudo_summary(conf, pam_ruser.clone(), pwd.clone(), cmd.clone())?
     }
     Ok(())
 }
@@ -52,108 +53,140 @@ pub fn post_sudo_summary(conf: &Config, pam_ruser: String) -> Result<()> {
 pub fn post_su_summary(conf: &Config, from: String, to: String) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        let from_copy = String::from(&from);
-        let to_copy = String::from(&to);
-        notif.post_su_summary(conf, from_copy, to_copy)?;
+        notif.post_su_summary(conf, from.clone(), to.clone())?;
     }
     Ok(())
 }
 
 /// Post summary for ssh attempts
-pub fn post_ssh_summary(
-    conf: &Config,
-    success: bool,
-    user: String,
-    pam_ruser: String,
-) -> Result<()> {
+pub fn post_ssh_summary(conf: &Config, success: bool, user: &str, pam_user: &str) -> Result<()> {
     let global_notifier = setup(conf);
     for notif in &global_notifier.0 {
-        let user_copy = String::from(&user);
-        let pam_ruser_copy = String::from(&pam_ruser);
-        notif.post_ssh_summary(conf, success, user_copy, pam_ruser_copy)?;
+        notif.post_ssh_summary(conf, success, user.to_string(), pam_user.to_string())?;
     }
     Ok(())
 }
 
 fn setup(conf: &Config) -> GlobalNotifier {
     let mut register: Vec<Box<dyn Notifier>> = Vec::new();
-    match Slack::new(conf) {
-        Some(slack) => {
-            register.push(Box::new(slack));
-        }
-        None => {}
-    };
+    if let Some(slack) = Slack::new(conf) {
+        register.push(Box::new(slack));
+    }
     GlobalNotifier(register)
 }
 
 /// Implements `Notifier` trait for slack
 #[derive(Debug)]
-pub struct Slack(String);
+pub struct Slack {
+    token: String,
+    channel: String,
+    client: Client,
+}
 
 impl Slack {
-    /// Creates JSON to be sent in the make_request
-    ///
-    /// Takes two arguments: `text` and `color`.
-    /// * `text` is the message to be displayed in the message on Slack.
-    ///   It accepts markdown format string.
-    /// * `color` is a hexcode color string prefixed with `#`.
-    ///   It's the color of message accent on Slack.
-    fn create_json(text: &str, color: &str) -> Result<String> {
-        let start = SystemTime::now();
-        let since_the_epoch = start.duration_since(UNIX_EPOCH)?;
-        let json_text = json!({
-            "attachments": [
-                {
-                    "text": format!("{}", text),
-                    "mrkdwn_in": ["text"],
-                    "ts": format!("{}", since_the_epoch.as_secs()),
-                    "color": format!("{}", color)
-                }
-            ]
-        })
-        .to_string();
-        Ok(json_text)
+    fn post_message(&self, text: &str, thread_ts: Option<&str>) -> Result<()> {
+        let mut payload = json!({
+            "channel": self.channel,
+            "text": text
+        });
+        if let Some(ts) = thread_ts {
+            payload["thread_ts"] = json!(ts);
+        }
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack payload: {:?}", payload);
+        let mut res = self
+            .client
+            .post("https://slack.com/api/chat.postMessage")
+            .header(AUTHORIZATION, format!("Bearer {}", self.token))
+            .header(CONTENT_TYPE, "application/json")
+            .json(&payload)
+            .send()
+            .chain_err(|| "Failed to send Slack message")?;
+
+        let body: serde_json::Value = res.json().chain_err(|| "Invalid JSON from Slack")?;
+        if !body["ok"].as_bool().unwrap_or(false) {
+            return Err(format!(
+                "Slack API error: {}",
+                body["error"].as_str().unwrap_or("unknown")
+            )
+            .into());
+        }
+
+        Ok(())
+    }
+
+    fn fetch_latest_ts(&self) -> Result<String> {
+        let mut res = self
+            .client
+            .get("https://slack.com/api/conversations.history")
+            .header(AUTHORIZATION, format!("Bearer {}", self.token))
+            .query(&[("channel", &self.channel), ("limit", &"1".to_string())])
+            .send()
+            .chain_err(|| "Failed to fetch message history")?;
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack response: {:?}", res);
+        let body: serde_json::Value = res.json().chain_err(|| "Invalid JSON from Slack")?;
+        if !body["ok"].as_bool().unwrap_or(false) {
+            return Err(format!(
+                "Slack history API error: {}",
+                body["error"].as_str().unwrap_or("unknown")
+            )
+            .into());
+        }
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack body: {:?}", body);
+        let ts = body["messages"]
+            .as_array()
+            .and_then(|arr| arr.first())
+            .and_then(|msg| msg["ts"].as_str())
+            .ok_or("No messages found in channel")?;
+        info!(target: LogTarget::WATCHDOG.as_str(), "Slack timestamp: {:?}", ts);
+        Ok(ts.to_string())
     }
 }
 
 impl Notifier for Slack {
     fn new(conf: &Config) -> Option<Slack> {
-        let url: &str = conf.notifiers.slack.trim();
-        if url.len() == 0 {
+        let token = conf.notifiers.token.trim();
+        let channel = conf.notifiers.channel.trim();
+
+        if token.is_empty() || channel.is_empty() {
             return None;
         }
-        Some(Slack(String::from(url)))
+
+        Some(Slack {
+            token: token.to_string(),
+            channel: channel.to_string(),
+            client: Client::new(),
+        })
     }
 
-    fn url(&self) -> &str {
-        &self.0
-    }
+    fn post_sudo_summary(
+        &self,
+        conf: &Config,
+        pam_ruser: String,
+        pwd: String,
+        cmd: String,
+    ) -> Result<()> {
+        let parent_text = format!("{} attempted sudo on {}", pam_ruser, conf.hostname);
+        self.post_message(&parent_text, None)?;
+        info!(target: LogTarget::WATCHDOG.as_str(), "Posted parent message: {:?}", parent_text);
 
-    fn make_request(&self, json: String) -> Result<()> {
-        let client = reqwest::Client::new();
-        let res = client
-            .post(self.url())
-            .header(CONTENT_TYPE, "application/json")
-            .body(json)
-            .send();
+        let thread_ts = self.fetch_latest_ts()?;
+        info!(target: LogTarget::WATCHDOG.as_str(), "Fetched thread timestamp: {:?}", thread_ts);
 
-        res.chain_err(|| "Error while creating a request to Slack Webhook")?;
-        Ok(())
-    }
+        let pwd_text = format!("Attempted in :{pwd} ");
+        self.post_message(&pwd_text, Some(&thread_ts))?;
 
-    fn post_sudo_summary(&self, conf: &Config, pam_ruser: String) -> Result<()> {
-        let text = format!("sudo attempted on {}@{}", pam_ruser, conf.hostname);
-        let json = Slack::create_json(&text, "#36a64f")?;
-        self.make_request(json)
-            .chain_err(|| "Couldn't post sudo summary to Slack")?;
+        let cmd_text = format!("Command :{cmd} ");
+        self.post_message(&cmd_text, Some(&thread_ts))?;
+
         Ok(())
     }
 
     fn post_su_summary(&self, conf: &Config, from: String, to: String) -> Result<()> {
-        let text = format!("switched user from {} to {} on {}", from, to, conf.hostname);
-        let json = Slack::create_json(&text, "#36a64f")?;
-        self.make_request(json)
-            .chain_err(|| "Couldn't post su summary to Slack")?;
+        let text = format!(
+            "Switched user from *{}* to *{}* on {}",
+            from, to, conf.hostname
+        );
+        self.post_message(&text, None)?;
         Ok(())
     }
 
@@ -162,23 +195,14 @@ impl Notifier for Slack {
         conf: &Config,
         success: bool,
         user: String,
-        pam_ruser: String,
+        pam_user: String,
     ) -> Result<()> {
-        let color: &str;
-        let text: String;
-        if success {
-            text = format!("{} logged in on {}@{}", user, pam_ruser, conf.hostname);
-            color = "#36a64f";
+        let text = if success {
+            format!("{} logged in on {}@{}", user, pam_user, conf.hostname)
         } else {
-            text = format!(
-                "{} tried to log in on {}@{}",
-                user, pam_ruser, conf.hostname
-            );
-            color = "#f29513";
-        }
-        let json = Slack::create_json(&text, color)?;
-        self.make_request(json)
-            .chain_err(|| "Couldn't post ssh summary to Slack")?;
+            format!("{} tried to log in on {}@{}", user, pam_user, conf.hostname)
+        };
+        self.post_message(&text, None)?;
         Ok(())
     }
 }

@@ -1,39 +1,45 @@
 use std::env;
-use std::process::Command;
 
-use nix::unistd::{fork, ForkResult};
-
-use lib::config::read_config;
 use lib::errors::*;
 use lib::init::init;
 use lib::notifier;
+use lib::utils::extract_sudo_command;
+use lib::{config::read_config, logger::LogTarget};
+use log::{error, info};
+use nix::unistd::{fork, ForkResult};
 
 pub fn handle_sudo() -> Result<()> {
+    info!(target: LogTarget::SUDO.as_str(), "Handling sudo command");
     let pam_type = env::var("PAM_TYPE")
                      .chain_err(|| "PAM_TYPE not set. If you are running this by `watchdog sudo`, please don't. It's an internal command, intended to be used by PAM.")?;
 
     let pam_ruser = env::var("PAM_RUSER")
                      .chain_err(|| "PAM_RUSER not set. If you are running this by `watchdog sudo`, please don't. It's an internal command, intended to be used by PAM.")?;
-
+    info!(target: LogTarget::SUDO.as_str(), "PAM_RUSER: {}", pam_ruser);
+    info!(target: LogTarget::SUDO.as_str(), "PAM_TYPE: {}", pam_type);
     if pam_type == "open_session" {
         let config = read_config()?;
         init(&config)?;
-
+        info!(target: LogTarget::SUDO.as_str(), "Logging successful");
         match fork() {
             Ok(ForkResult::Parent { .. }) => {}
             Ok(ForkResult::Child) => {
-                notifier::post_sudo_summary(&config, pam_ruser)?;
+                let pwd = env::var("PWD").unwrap_or_else(|_| {
+                    std::env::current_dir()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|_| "<unknown>".to_string())
+                });
+                info!(target: LogTarget::SUDO.as_str(), "PWD: {}", pwd);
+                let cmd = extract_sudo_command().unwrap_or_else(|_| {
+                    error!("Failed to extract sudo command");
+                    "UNKNOWN".to_string()
+                });
+                info!(target: LogTarget::SUDO.as_str(), "Command: {}", cmd);
+                notifier::post_sudo_summary(&config, pam_ruser, pwd, cmd)?;
             }
-            Err(_) => println!("Fork failed"),
+            Err(_) => error!("Fork failed"),
         }
     }
 
     Ok(())
-}
-
-pub fn handle_sudo_logs() {
-    Command::new("less")
-        .arg("/opt/watchdog/logs/sudo.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }

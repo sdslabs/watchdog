@@ -1,19 +1,21 @@
-use std::fs;
-
+use crate::{constants::CONFIG_PATH, errors::*};
 use serde_derive::Deserialize;
+use std::fs;
+use std::path::PathBuf;
 use toml_edit::{value, Document};
-
-use crate::errors::*;
-
-#[derive(Deserialize, Clone)]
-pub struct KeyhouseConf {
-    pub base_url: String,
-    pub token: String,
-}
+use watchdog_utils_II::config::KeyhouseConf;
 
 #[derive(Deserialize, Clone)]
 pub struct NotifiersConf {
-    pub slack: String,
+    pub token: String,
+    pub channel: String,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct LoggingConf {
+    pub debug: String,
+    pub offset: String,
+    pub verbosity: String,
 }
 
 #[derive(Deserialize, Clone)]
@@ -21,16 +23,25 @@ pub struct Config {
     pub hostname: String,
     pub keyhouse: KeyhouseConf,
     pub notifiers: NotifiersConf,
+    pub logging: LoggingConf,
+    #[serde(default = "Config::default_cache_path")]
+    pub cache_path: PathBuf,
+}
+
+impl Config {
+    pub fn default_cache_path() -> PathBuf {
+        PathBuf::from("/opt/watchdog/cache")
+    }
 }
 
 pub fn read_config() -> Result<Config> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let config: Config = toml::from_str(&toml_str)?;
     Ok(config)
 }
 
 pub fn set_config_value(key: &str, val: &str) -> Result<()> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let mut doc = toml_str.parse::<Document>().chain_err(|| {
         "Invalid TOML file. Please reverify if /opt/watchdog/config.toml is a valid toml file."
     })?;
@@ -44,19 +55,34 @@ pub fn set_config_value(key: &str, val: &str) -> Result<()> {
         "keyhouse.token" => {
             doc["keyhouse"]["token"] = value(val);
         }
-        "notifiers.slack" => {
-            doc["notifiers"]["slack"] = value(val);
+        "notifiers.token" => {
+            doc["notifiers"]["token"] = value(val);
+        }
+        "notifiers.channel" => {
+            doc["notifiers"]["channel"] = value(val);
+        }
+        "logging.debug" => {
+            doc["logging"]["debug"] = value(val);
+        }
+        "logging.offset" => {
+            doc["logging"]["offset"] = value(val);
+        }
+        "logging.verbosity" => {
+            doc["logging"]["verbosity"] = value(val);
+        }
+        "cache_path" => {
+            doc["cache_path"] = value(val);
         }
         _ => {
             return Err("Invalid Key passed".into());
         }
     }
-    fs::write("/opt/watchdog/config.toml", doc.to_string())?;
+    fs::write(CONFIG_PATH, doc.to_string())?;
     Ok(())
 }
 
 pub fn get_config_value(key: &str) -> Result<String> {
-    let toml_str = fs::read_to_string("/opt/watchdog/config.toml")?;
+    let toml_str = fs::read_to_string(CONFIG_PATH)?;
     let doc = toml_str.parse::<Document>().chain_err(|| {
         "Invalid TOML file. Please reverify if /opt/watchdog/config.toml is a valid toml file."
     })?;
@@ -64,13 +90,18 @@ pub fn get_config_value(key: &str) -> Result<String> {
         "hostname" => doc["hostname"].as_str(),
         "keyhouse.base_url" => doc["keyhouse"]["base_url"].as_str(),
         "keyhouse.token" => doc["keyhouse"]["token"].as_str(),
-        "notifiers.slack" => doc["notifiers"]["slack"].as_str(),
+        "notifiers.token" => doc["notifiers"]["token"].as_str(),
+        "notifiers.channel" => doc["notifiers"]["channel"].as_str(),
+        "logging.debug" => doc["logging"]["debug"].as_str(),
+        "logging.offset" => doc["logging"]["offset"].as_str(),
+        "logging.verbosity" => doc["logging"]["verbosity"].as_str(),
+        "cache_path" => doc["cache_path"].as_str(),
         _ => {
             return Err("Invalid Key passed".into());
         }
     };
-    return match val {
+    match val {
         Some(s) => Ok(String::from(s)),
         None => Err("config.toml file doesn't contain that key.".into()),
-    };
+    }
 }

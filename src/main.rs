@@ -4,32 +4,86 @@ mod auth;
 mod ssh;
 mod su;
 mod sudo;
-
-use std::process::Command;
+mod update;
 
 use clap::{App, AppSettings, Arg, SubCommand};
 
-use lib::config::{get_config_value, set_config_value};
-use lib::errors::Error;
-
 use auth::handle_auth;
-use ssh::{handle_ssh, handle_ssh_logs};
-use su::{handle_su, handle_su_logs};
-use sudo::{handle_sudo, handle_sudo_logs};
+use lib::errors::Error;
+use lib::logger::{handle_logs_all, handle_logs_for, init_logger, LogTarget};
+use log::{error, info};
+use ssh::handle_ssh;
+use su::handle_su;
+use sudo::handle_sudo;
+use update::handle_update;
 
 fn make_app<'a, 'b>() -> App<'a, 'b> {
     App::new("Watchdog")
         .version("0.1.0")
         .author("SDSLabs <contact@sdslabs.co>")
         .about("Simple server access management system on a binary")
-        .subcommand(SubCommand::with_name("logs")
-            .about("Get the global watchdog logs")
-            .arg(Arg::with_name("filter")
-                .short("f")
-                .long("filter")
-                .help("Filter logs according to service. Can take value among `su`, `sudo`, `ssh` or `all`")
-                .takes_value(true)
-                .default_value("all")))
+        .subcommand(
+            SubCommand::with_name("logs")
+                .about("Fetch logs from watchdog components")
+                .arg(Arg::with_name("level")
+                    .long("level")
+                    .takes_value(true)
+                    .help("Filter log level when no component is specified (defaults to 'watchdog')"))
+                .subcommand(
+                    SubCommand::with_name("all")
+                        .about("Logs from whole watchdog")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level: info, warn, error"))
+                )
+                .subcommand(
+                    SubCommand::with_name("update")
+                        .about("Logs from watchdog update")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level: info, warn, error"))
+                )
+                .subcommand(
+                    SubCommand::with_name("sudo")
+                        .about("Logs from sudo")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("su")
+                        .about("Logs from su")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("ssh")
+                        .about("Logs from ssh")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+                .subcommand(
+                    SubCommand::with_name("watchdog")
+                        .about("Logs from watchdog")
+                        .arg(Arg::with_name("level")
+                            .short("l")
+                            .long("level")
+                            .takes_value(true)
+                            .help("Filter by log level"))
+                )
+        )
         .subcommand(SubCommand::with_name("sudo")
             .about("Handles the PAM sudo calls by pam_exec for Watchdog"))
         .subcommand(SubCommand::with_name("su")
@@ -60,20 +114,24 @@ fn make_app<'a, 'b>() -> App<'a, 'b> {
             .about("Get or set Watchdog configuration")
             .setting(AppSettings::ArgRequiredElseHelp)
             .arg(Arg::with_name("key")
-                 .index(1)
-                 .help("Config variable to be fetched/set"))
+                .index(1)
+                .help("Config variable to be fetched/set"))
             .arg(Arg::with_name("value")
-                 .index(2)
-                 .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
+                .index(2)
+                .help("Value to be set for the <key>. If no value is passed, the current value is returned.")))
+        .subcommand(SubCommand::with_name("update").arg(Arg::with_name("all")
+            .short("a")
+            .long("all")
+            .help("Update all users from scratch")
+            .takes_value(false)))
+        .about("Update users and groups from Keyhouse")
 }
 
 fn print_traceback(e: Error) {
     println!("Traceback:");
 
-    let mut i = 1;
-    for e in e.iter().skip(1) {
-        println!("[{}]: {}", i, e);
-        i += 1;
+    for (i, e) in (1..).zip(e.iter().skip(1)) {
+        println!("[{i}]: {e}");
     }
 }
 
@@ -81,82 +139,87 @@ fn main() {
     let app = make_app();
     let matches = app.get_matches();
 
-    if let Some(ref _matches) = matches.subcommand_matches("sudo") {
+    init_logger().unwrap_or_else(|e| {
+        eprintln!("Logger failed to initialize: {e}");
+    });
+    info!(target: "watchdog", "Watchdog started.");
+    if let Some(logs_matches) = matches.subcommand_matches("logs") {
+        let level = logs_matches.value_of("level");
+        match logs_matches.subcommand() {
+            ("all", Some(sub_m)) => {
+                handle_logs_all(sub_m.value_of("level").or(level));
+            }
+            ("update", Some(sub_m)) => {
+                handle_logs_for(
+                    LogTarget::UPDATE.as_str(),
+                    sub_m.value_of("level").or(level),
+                );
+            }
+            ("sudo", Some(sub_m)) => {
+                handle_logs_for(LogTarget::SUDO.as_str(), sub_m.value_of("level").or(level));
+            }
+            ("su", Some(sub_m)) => {
+                handle_logs_for(LogTarget::SU.as_str(), sub_m.value_of("level").or(level));
+            }
+            ("ssh", Some(sub_m)) => {
+                handle_logs_for(LogTarget::SSH.as_str(), sub_m.value_of("level").or(level));
+            }
+            ("watchdog", Some(sub_m)) => {
+                handle_logs_for(
+                    LogTarget::WATCHDOG.as_str(),
+                    sub_m.value_of("level").or(level),
+                );
+            }
+            _ => {
+                handle_logs_for("watchdog", level);
+            }
+        }
+    } else if let Some(_matches) = matches.subcommand_matches("sudo") {
         if let Err(e) = handle_sudo() {
-            println!("watchdog-sudo error: {}", e);
+            println!("watchdog-sudo error: {e}");
+            error!("watchdog-sudo error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("su") {
+    } else if let Some(_matches) = matches.subcommand_matches("su") {
         if let Err(e) = handle_su() {
-            println!("watchdog-su error: {}", e);
+            println!("watchdog-su error: {e}");
+            error!("watchdog-su error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref _matches) = matches.subcommand_matches("ssh") {
+    } else if let Some(_matches) = matches.subcommand_matches("ssh") {
+        info!("SSH Command");
         if let Err(e) = handle_ssh() {
-            println!("watchdog-ssh error: {}", e);
+            println!("watchdog-ssh error: {e}");
+            error!("watchdog-ssh error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("auth") {
+    } else if let Some(matches) = matches.subcommand_matches("auth") {
         let pubkey = matches.value_of("pubkey").unwrap();
         let keytype = matches.value_of("keytype").unwrap();
         let user = matches.value_of("user").unwrap();
         let ssh_key = format!("{} {}", keytype, pubkey);
-        if let Err(e) = handle_auth(&user, &ssh_key) {
+        if let Err(e) = handle_auth(user, &ssh_key) {
             println!("watchdog-auth error: {}", e);
+            error!("watchdog-auth error: {}", e);
             print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("logs") {
-        let filter = matches.value_of("filter").unwrap();
-        if filter == "all" {
-            handle_all_logs();
-        } else if filter == "sudo" {
-            handle_sudo_logs();
-        } else if filter == "su" {
-            handle_su_logs();
-        } else if filter == "ssh" {
-            handle_ssh_logs();
-        } else {
-            println!("Invalid Filter");
+    } else if let Some(update_matches) = matches.subcommand_matches("update") {
+        let mut should_update_all_users = false;
+        if update_matches.is_present("all") {
+            should_update_all_users = true;
+        }
+        if let Err(e) = handle_update(should_update_all_users) {
+            println!("watchdog-update error: {e}");
+            error!("watchdog-update error: {}", e);
+            print_traceback(e);
             std::process::exit(1);
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("config") {
-        let key = matches.value_of("key").unwrap();
-        let val = matches.value_of("value");
-        let _ = match val {
-            Some(v) => {
-                match set_config_value(key, v) {
-                    Ok(()) => {}
-                    Err(e) => {
-                        println!("watchdog-config error: {}", e);
-                        std::process::exit(1);
-                    }
-                };
-            }
-            None => {
-                let v = get_config_value(key);
-                match v {
-                    Ok(s) => println!("{}", s),
-                    Err(e) => {
-                        println!("watchdog-config error: {}", e);
-                        std::process::exit(1);
-                    }
-                }
-            }
-        };
     } else {
         println!("No command passed");
         std::process::exit(1);
     }
-}
-
-fn handle_all_logs() {
-    /* TODO: Unimplemented function */
-    Command::new("less")
-        .arg("/opt/watchdog/logs/sudo.logs")
-        .status()
-        .expect("Something went wrong. Is `less` command present in your environment?");
 }
