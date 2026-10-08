@@ -1,0 +1,8 @@
+# Only send the files needed to compile Watchdog.
+**
+!Cargo.toml
+!Cargo.lock
+!src
+!src/**
+!Dockerfile
+!Dockerfile.dockerignore

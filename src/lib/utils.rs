@@ -325,7 +325,7 @@ pub fn extract_sudo_command() -> Result<String> {
     }
 
     error!(target: LogTarget::SUDO.as_str(), "extract_sudo_command: All methods failed to determine command");
-    bail!("Could not determine sudo command from any method")
+    bail!("Could not determine sudo command from any method");
 }
 
 /// Helper function to extract command from a specific PID
