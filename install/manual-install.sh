@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 # Install all the files at right place
 mkdir -p /opt/watchdog/bin
 mkdir -p /opt/watchdog/logs
@@ -11,6 +13,13 @@ touch /opt/watchdog/custom-logs/ssh.logs
 touch /opt/watchdog/custom-logs/sudo.logs
 touch /opt/watchdog/custom-logs/su.logs
 touch /opt/watchdog/custom-logs/auth.logs
+
+# binary must exist before copying
+if [[ ! -x ../target/release/watchdog ]]; then
+	echo "Error: ../target/release/watchdog not found."
+	echo "Build the watchdog binary first (cargo build --release, or see README.md for the Docker build)."
+	exit 1
+fi
 
 cp ../target/release/watchdog /opt/watchdog/bin/watchdog
 chown root /opt/watchdog/bin/watchdog
@@ -25,7 +34,7 @@ cp /etc/ssh/sshd_config /etc/ssh/sshd_config.watchdog.bak
 python3 edit-sshd-config.py
 cp watchdog_tmp_sshd_config /etc/ssh/sshd_config
 rm watchdog_tmp_sshd_config
-service sshd restart
+service sshd restart || echo "warning: sshd restart failed"
 
 # installing pam_exec lines
 python3 pam-install-sudo.py
