@@ -15,6 +15,7 @@ Check out this blog post to know how watchdog works and design methodologies beh
 * [Installation](#installation)
 * [Usage](#usage)
 * [Development](#development)
+* [Docker build](#docker-build)
 * [Contact](#contact)
 
 
@@ -138,6 +139,36 @@ $ git clone https://github.com/sdslabs/watchdog
 3. Run `cargo test` to test your changes.
 
 4. Rebuild the binary using `cargo build` command.
+
+## Docker build
+
+This build requires Docker Buildx for BuildKit cache mounts and binary export.
+Check that it is installed:
+
+```bash
+docker buildx version
+```
+
+Then build a statically linked x86-64 Linux binary from the repository root:
+
+```bash
+docker buildx build --platform linux/amd64 --progress=plain \
+  --target artifact --output type=local,dest=./target/releases .
+```
+
+The binary is exported to `target/releases/watchdog`. Docker installs the Rust target and
+musl build tools, builds OpenSSL from source, and verifies that the executable
+has no dynamic loader or shared-library dependencies. On ARM hosts, Docker
+must support amd64 emulation.
+
+Repeated builds on the same Docker builder reuse cached toolchain layers,
+downloaded crates, and compiled dependencies. These caches also work with
+`docker build` when using BuildKit and persist until the builder's cache is
+removed.
+
+Install the exported binary on a host with Watchdog's configuration, PAM,
+OpenSSH, and TLS CA certificates. Standard Cargo builds continue to use the
+host toolchain.
 
 ## Contact
 
