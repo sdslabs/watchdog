@@ -1,0 +1,90 @@
+---
+title: "Keyhouse Sync"
+description: "How Watchdog pulls access changes from Keyhouse and applies them to the server, without a separate webhook server."
+---
+
+### What is Keyhouse?
+
+What do we do if we cannot ensure a database that is almost always live? Well, host your database as a GitHub repository ;) That's what we did, and it has worked very well.
+
+The first thing to look at should be the structure of Keyhouse.
+
+![Keyhouse repository structure](/images/hLr8AsappF8wN1ZeS0Qa.png)
+
+*tl;dr* the folder `keys` contains the SSH keys of all members, and the `hosts` folder contains a file for each member listing the servers and groups they can access.
+
+Let's have a look at Keyhouse.
+
+![Keyhouse folder layout](/images/syWYibiENOqE5LomRogh.png)
+
+To register yourself as a part of an organization (and get a username), add your SSH key to the file `data/keys/<name>`. Make sure the name you choose doesn't collide with someone else's.
+
+![Adding an SSH key to Keyhouse](/images/b7QR3YLfEJjkAZvVbS8g.png)
+
+To gain access to the group `study` in the server called `ratchet`, we edit our own file `data/hosts/<name>` (the same `<name>` as our key file) to add the line `ratchet|study` at the bottom, open a pull request
+
+![Adding an access line to a hosts file](/images/j9pkX8U0AI2YFxc2nECm.png)
+
+and get it merged by an admin.
+
+![Pull request merged by an admin](/images/zecpok86Cyj26gmOaAmo.png)
+
+As simple as that! You got access to group `study` on server `ratchet` (no, not really, we won't give you access to our ratchet).
+
+### How does Watchdog sync with Keyhouse?
+
+Watchdog pulls changes from Keyhouse itself, so there's no separate webhook server to run or expose. The sync logic lives in the [`watchdog_utils_II`](https://github.com/sdslabs/watchdog-utils) crate, which Watchdog depends on directly.
+
+#### What Watchdog reads
+
+When your pull request is merged, Keyhouse's build workflow turns the `data/` folder into an API tree on the `build` branch. That branch, not `data/`, is what Watchdog reads:
+
+```
+build branch
+├── names/
+│   └── <user-hash>          # holds the username
+└── access/
+    └── <server>/
+        └── <group>/
+            └── <user-hash>  # grants access
+```
+
+`<user-hash>` is the SHA-256 of the member's SSH key. Your `ratchet|study` line from above becomes `access/ratchet/study/<your-hash>`.
+
+#### Incremental sync (`watchdog update`)
+
+Watchdog can be triggered by CI, cron, or an SSH login; see [Setup](/setup#keeping-watchdog-in-sync-with-keyhouse). Whichever way it's triggered, the sync runs the same steps:
+
+<Steps>
+  <Step title="Read the last synced commit">
+    Watchdog stores the last commit it synced in `/opt/watchdog/bin/base_commit.txt`.
+  </Step>
+  <Step title="Fetch the diff">
+    It fetches the latest commit on the `build` branch and asks GitHub for the diff since the last synced commit.
+  </Step>
+  <Step title="Filter for this server">
+    It keeps changes under `access/<server>/...` where `<server>` matches this server's `hostname`, plus `names/` changes.
+  </Step>
+  <Step title="Apply the changes">
+    It creates users as needed, adds or removes them from Unix groups, and deletes a user once they have no groups left on this server.
+  </Step>
+  <Step title="Save the new commit">
+    It writes the new commit hash to `base_commit.txt`, so the next sync only looks at what changed since.
+  </Step>
+</Steps>
+
+<Note>
+  Groups must already exist on the server; Watchdog doesn't create them. The
+  `sudo` group is mapped to the server's `sudo` or `wheel` group.
+</Note>
+
+#### Full sync (`watchdog update --all`)
+
+A full sync skips the diff. It downloads the entire `build` tree into a local cache, reconciles every user and group on the server against it, and records the latest commit in `base_commit.txt`. Run it once on a fresh install, and any time you want to resync from scratch.
+
+#### When things go wrong
+
+| Situation | What happens |
+|---|---|
+| `base_commit.txt` is missing or empty (e.g. a fresh install) | `watchdog update` stops with an error asking you to run `watchdog update --all` first. |
+| GitHub can't be reached, or the commit/diff fetch fails | Watchdog reconciles users from the local cache of the last full sync, so the server keeps its last known access list. |

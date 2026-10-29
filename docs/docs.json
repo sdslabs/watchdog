@@ -1,0 +1,70 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Watchdog",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#6366F1",
+    "dark": "#3730A3"
+  },
+  "background": {
+    "color": {
+      "dark": "#0a0a0f"
+    }
+  },
+  "appearance": {
+    "default": "light"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": ["introduction", "setup", "server-admin-guide"]
+      },
+      {
+        "group": "How It Works",
+        "pages": [
+          "how-it-works/basic-outline",
+          "how-it-works/keyhouse-sync",
+          "how-it-works/internals"
+        ]
+      }
+    ]
+  },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/introduction"
+    }
+  ],
+  "navbar": {
+    "links": [
+      {
+        "label": "SDSLabs",
+        "href": "https://sdslabs.co"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "GitHub",
+      "href": "https://github.com/sdslabs/watchdog"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:image": "https://watchdog.sdslabs.co/images/og.png",
+      "twitter:image": "https://watchdog.sdslabs.co/images/og.png"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/sdslabs/watchdog",
+      "website": "https://sdslabs.co"
+    }
+  }
+}
