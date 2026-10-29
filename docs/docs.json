@@ -55,6 +55,12 @@
       "href": "https://github.com/sdslabs/watchdog"
     }
   },
+  "seo": {
+    "metatags": {
+      "og:image": "https://watchdog.sdslabs.co/images/og.png",
+      "twitter:image": "https://watchdog.sdslabs.co/images/og.png"
+    }
+  },
   "footer": {
     "socials": {
       "github": "https://github.com/sdslabs/watchdog",
