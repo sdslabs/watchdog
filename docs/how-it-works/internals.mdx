@@ -34,7 +34,8 @@ sudo ./watchdog update
 ```
 
 - Syncs users and groups from the Keyhouse system into your server, by fetching and applying the diff since the last sync (see [Keyhouse Sync](/how-it-works/keyhouse-sync) for how this works).
-- Should be run periodically via cron, unless Watchdog was built with the `auto-update` feature (in which case this happens automatically on every SSH login).
+- Needs something to trigger it: CI, cron, or the `auto-update` build feature (which runs a full sync on every SSH login). See [Setup](/setup#keeping-watchdog-in-sync-with-keyhouse).
+- Requires `base_commit.txt` from a previous sync; on a fresh install, run `update --all` first.
 - Pass `--all` to force a full resync instead of an incremental diff:
 
 ```bash
@@ -64,22 +65,25 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    auth      Authorizes users based on Keyhouse repository
+    auth      Authorizes users based on from keyhouse repository. This command is passed through
+              `AuthorizedKeysCommand` in sshd_config.
     config    Get or set Watchdog configuration
-    help      Prints help for any subcommand
+    help      Prints this message or the help of the given subcommand(s)
     logs      Fetch logs from watchdog components
-    ssh       Handles PAM SSH events
-    su        Handles PAM su events
-    sudo      Handles PAM sudo events
-    update    Update users and groups from Keyhouse
+    ssh       Handles the PAM SSH calls by pam_exec for Watchdog
+    su        Handles the PAM su calls by pam_exec for Watchdog
+    sudo      Handles the PAM sudo calls by pam_exec for Watchdog
+    update
 ```
+
+`auth`, `ssh`, `su`, and `sudo` are called by sshd and PAM; you won't normally run them yourself.
 
 ### Optional: Add to `$PATH`
 
-To use `watchdog` globally without navigating every time:
+To use `watchdog` globally without navigating every time (the [Setup](/setup) guide already does this):
 
 ```bash
-sudo ln -s /opt/watchdog/bin/watchdog /usr/local/bin/watchdog
+sudo ln -s /opt/watchdog/bin/watchdog /usr/bin/watchdog
 ```
 
 Now you can simply do:

@@ -3,7 +3,7 @@ title: "Server Admin Guide"
 description: "Linux user and group management practices that form the foundation for Watchdog."
 ---
 
-To ensure secure and maintainable access control across projects, the following practices establish a clean separation of permissions using Linux user and group management — forming the foundation needed for effective use of Watchdog.
+To ensure secure and maintainable access control across projects, the following practices establish a clean separation of permissions using Linux user and group management. They form the foundation needed for effective use of Watchdog.
 
 For creating a project on your server, you need to do the following:
 
@@ -25,4 +25,4 @@ Here, we have project groups and users for all members of your organization. In 
 
 ### To give sudo access
 
-You can give sudo access to members on a server by adding `server|sudo` in the `/hosts/user` file.
+You can give a member sudo access on a server by adding `<server>|sudo` to their `data/hosts/<name>` file in Keyhouse. Watchdog adds them to the server's `sudo` group, or `wheel` if there's no `sudo` group.

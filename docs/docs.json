@@ -2,6 +2,11 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Watchdog",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.png",
   "colors": {
     "primary": "#4F46E5",
     "light": "#6366F1",
@@ -13,13 +18,13 @@
     }
   },
   "appearance": {
-    "default": "dark"
+    "default": "light"
   },
   "navigation": {
     "groups": [
       {
-        "group": "Introduction",
-        "pages": ["index", "setup", "server-admin-guide"]
+        "group": "Getting Started",
+        "pages": ["introduction", "setup", "server-admin-guide"]
       },
       {
         "group": "How It Works",
@@ -31,6 +36,12 @@
       }
     ]
   },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/introduction"
+    }
+  ],
   "navbar": {
     "links": [
       {
